@@ -25,7 +25,7 @@ Set these values in `.env.local`:
 
 ```dotenv
 NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your-publishable-key
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
 ```
 
@@ -34,7 +34,7 @@ Apply [`supabase/migrations/20260714000000_classmate_beta.sql`](supabase/migrati
 ## Vercel deployment
 
 1. Import this GitHub repository into Vercel.
-2. Add `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, and `NEXT_PUBLIC_SITE_URL` to the Vercel project.
+2. Add `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, and `NEXT_PUBLIC_SITE_URL` to the Vercel project.
 3. Set `NEXT_PUBLIC_SITE_URL` to the final HTTPS production origin without a trailing slash.
 4. Deploy, then add `https://your-domain/auth/callback` to the Supabase redirect allow list.
 
