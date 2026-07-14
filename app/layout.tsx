@@ -7,6 +7,7 @@ import "./responsive.css";
 import "./practice.css";
 import "./practice-responsive.css";
 import "./non-neon.css";
+import { siteUrl } from "../lib/site-url";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -19,7 +20,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://pipeline-academy.etozinplayz.chatgpt.site"),
+  metadataBase: new URL(siteUrl()),
   title: {
     default: "Pipeline Academy — Learn How Code Reaches Production",
     template: "%s · Pipeline Academy",

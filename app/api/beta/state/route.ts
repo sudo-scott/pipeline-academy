@@ -1,6 +1,9 @@
-import { getChatGPTUser } from "../../../chatgpt-auth";
-import { betaDb, ensureBetaViewer } from "../../../../lib/beta-server";
 import { z } from "zod";
+import { ensureBetaViewer } from "../../../../lib/beta-server";
+import {
+  createSupabaseServerClient,
+  isSupabaseConfigured,
+} from "../../../../lib/supabase/server";
 
 const submission = z.object({
   score: z.number().int().min(0).max(100),
@@ -29,39 +32,46 @@ const action = z.discriminatedUnion("type", [
 ]);
 
 async function authenticated() {
-  const user = await getChatGPTUser();
-  if (!user) return null;
-  return ensureBetaViewer(user);
+  if (!isSupabaseConfigured()) return null;
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  return user ? ensureBetaViewer(user) : null;
 }
 
-async function readState(email: string, challengeId = "fix-node-pipeline") {
-  const db = await betaDb();
-  const [lesson, challenge] = await Promise.all([
-    db
-      .prepare(
-        `SELECT completed, note, updated_at AS updatedAt
-         FROM beta_lesson_state WHERE email = ? AND lesson_id = ?`,
-      )
-      .bind(email, "software-delivery")
-      .first<{ completed: number; note: string; updatedAt: number }>(),
-    db
-      .prepare(
-        `SELECT draft, submissions, updated_at AS updatedAt
-         FROM beta_challenge_state WHERE email = ? AND challenge_id = ?`,
-      )
-      .bind(email, challengeId)
-      .first<{ draft: string; submissions: string; updatedAt: number }>(),
+async function readState(userId: string, challengeId = "fix-node-pipeline") {
+  const supabase = await createSupabaseServerClient();
+  const [lessonResult, challengeResult] = await Promise.all([
+    supabase
+      .from("beta_lesson_state")
+      .select("completed,note,updated_at")
+      .eq("user_id", userId)
+      .eq("lesson_id", "software-delivery")
+      .maybeSingle(),
+    supabase
+      .from("beta_challenge_state")
+      .select("draft,submissions,updated_at")
+      .eq("user_id", userId)
+      .eq("challenge_id", challengeId)
+      .maybeSingle(),
   ]);
+  if (lessonResult.error) throw new Error(lessonResult.error.message);
+  if (challengeResult.error) throw new Error(challengeResult.error.message);
+  const lesson = lessonResult.data;
+  const challenge = challengeResult.data;
   return {
     lesson: {
       completed: Boolean(lesson?.completed),
       note: lesson?.note ?? "",
-      updatedAt: lesson?.updatedAt ?? null,
+      updatedAt: lesson?.updated_at ?? null,
     },
     challenge: {
       draft: challenge?.draft ?? "",
-      submissions: JSON.parse(challenge?.submissions ?? "[]") as unknown[],
-      updatedAt: challenge?.updatedAt ?? null,
+      submissions: Array.isArray(challenge?.submissions)
+        ? challenge.submissions
+        : [],
+      updatedAt: challenge?.updated_at ?? null,
     },
   };
 }
@@ -72,10 +82,7 @@ export async function GET(request: Request) {
     return Response.json({ error: "Authentication required" }, { status: 401 });
   const challengeId =
     new URL(request.url).searchParams.get("challengeId") ?? "fix-node-pipeline";
-  return Response.json({
-    viewer,
-    ...(await readState(viewer.email, challengeId)),
-  });
+  return Response.json({ viewer, ...(await readState(viewer.userId, challengeId)) });
 }
 
 export async function POST(request: Request) {
@@ -89,72 +96,60 @@ export async function POST(request: Request) {
       { status: 400 },
     );
 
-  const db = await betaDb();
-  const now = Date.now();
+  const supabase = await createSupabaseServerClient();
+  const now = new Date().toISOString();
   const value = parsed.data;
   let challengeId = "fix-node-pipeline";
+  let error: { message: string } | null = null;
+
   if (value.type === "lesson.save") {
-    await db
-      .prepare(
-        `INSERT INTO beta_lesson_state (email, lesson_id, completed, note, updated_at)
-         VALUES (?, ?, ?, ?, ?)
-         ON CONFLICT(email, lesson_id) DO UPDATE SET
-           completed = excluded.completed,
-           note = excluded.note,
-           updated_at = excluded.updated_at`,
-      )
-      .bind(
-        viewer.email,
-        value.lessonId,
-        value.completed ? 1 : 0,
-        value.note,
-        now,
-      )
-      .run();
+    ({ error } = await supabase.from("beta_lesson_state").upsert(
+      {
+        user_id: viewer.userId,
+        lesson_id: value.lessonId,
+        completed: value.completed,
+        note: value.note,
+        updated_at: now,
+      },
+      { onConflict: "user_id,lesson_id" },
+    ));
   } else if (value.type === "challenge.saveDraft") {
     challengeId = value.challengeId;
-    await db
-      .prepare(
-        `INSERT INTO beta_challenge_state (email, challenge_id, draft, submissions, updated_at)
-         VALUES (?, ?, ?, '[]', ?)
-         ON CONFLICT(email, challenge_id) DO UPDATE SET
-           draft = excluded.draft,
-           updated_at = excluded.updated_at`,
-      )
-      .bind(viewer.email, value.challengeId, value.source, now)
-      .run();
+    ({ error } = await supabase.from("beta_challenge_state").upsert(
+      {
+        user_id: viewer.userId,
+        challenge_id: value.challengeId,
+        draft: value.source,
+        updated_at: now,
+      },
+      { onConflict: "user_id,challenge_id" },
+    ));
   } else {
     challengeId = value.challengeId;
-    const current = await db
-      .prepare(
-        "SELECT draft, submissions FROM beta_challenge_state WHERE email = ? AND challenge_id = ?",
-      )
-      .bind(viewer.email, value.challengeId)
-      .first<{ draft: string; submissions: string }>();
-    const history = [
-      value.submission,
-      ...(JSON.parse(current?.submissions ?? "[]") as unknown[]),
-    ].slice(0, 20);
-    await db
-      .prepare(
-        `INSERT INTO beta_challenge_state (email, challenge_id, draft, submissions, updated_at)
-         VALUES (?, ?, ?, ?, ?)
-         ON CONFLICT(email, challenge_id) DO UPDATE SET
-           draft = excluded.draft,
-           submissions = excluded.submissions,
-           updated_at = excluded.updated_at`,
-      )
-      .bind(
-        viewer.email,
-        value.challengeId,
-        value.submission.source,
-        JSON.stringify(history),
-        now,
-      )
-      .run();
+    const current = await supabase
+      .from("beta_challenge_state")
+      .select("submissions")
+      .eq("user_id", viewer.userId)
+      .eq("challenge_id", value.challengeId)
+      .maybeSingle();
+    if (current.error) throw new Error(current.error.message);
+    const previous = Array.isArray(current.data?.submissions)
+      ? current.data.submissions
+      : [];
+    ({ error } = await supabase.from("beta_challenge_state").upsert(
+      {
+        user_id: viewer.userId,
+        challenge_id: value.challengeId,
+        draft: value.submission.source,
+        submissions: [value.submission, ...previous].slice(0, 20),
+        updated_at: now,
+      },
+      { onConflict: "user_id,challenge_id" },
+    ));
   }
+  if (error) throw new Error(error.message);
   return Response.json({
     viewer,
-    ...(await readState(viewer.email, challengeId)),
+    ...(await readState(viewer.userId, challengeId)),
   });
 }

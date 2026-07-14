@@ -1,4 +1,5 @@
 import type { MetadataRoute } from "next";
+import { siteUrl } from "../lib/site-url";
 export default function robots(): MetadataRoute.Robots {
   return {
     rules: {
@@ -6,6 +7,6 @@ export default function robots(): MetadataRoute.Robots {
       allow: "/",
       disallow: ["/admin", "/instructor", "/account"],
     },
-    sitemap: "https://pipeline-academy.etozinplayz.chatgpt.site/sitemap.xml",
+    sitemap: `${siteUrl()}/sitemap.xml`,
   };
 }

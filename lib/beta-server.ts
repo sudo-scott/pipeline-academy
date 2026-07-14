@@ -1,48 +1,58 @@
+import type { User } from "@supabase/supabase-js";
 import { redirect } from "next/navigation";
 import {
-  getChatGPTUser,
-  requireChatGPTUser,
-  type ChatGPTUser,
-} from "../app/chatgpt-auth";
+  createSupabaseServerClient,
+  isSupabaseConfigured,
+} from "./supabase/server";
 
 export type BetaRole = "student" | "instructor" | "admin";
 export type BetaViewer = {
+  userId: string;
   displayName: string;
   email: string;
   role: BetaRole;
 };
 
-async function database() {
-  const { env } = await import("cloudflare:workers");
-  if (!env.DB) throw new Error("The beta database is unavailable.");
-  return env.DB;
-}
+export async function ensureBetaViewer(user: User): Promise<BetaViewer> {
+  const email = user.email;
+  if (!email) throw new Error("The signed-in account has no email address.");
 
-export async function ensureBetaViewer(user: ChatGPTUser): Promise<BetaViewer> {
-  const db = await database();
-  const now = Date.now();
-  await db
-    .prepare(
-      `INSERT INTO beta_members (email, display_name, role, joined_at, last_seen_at)
-       VALUES (?, ?, 'student', ?, ?)
-       ON CONFLICT(email) DO UPDATE SET
-         display_name = excluded.display_name,
-         last_seen_at = excluded.last_seen_at`,
+  const displayName =
+    stringMetadata(user.user_metadata.full_name) ??
+    stringMetadata(user.user_metadata.name) ??
+    email.split("@")[0];
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("beta_members")
+    .upsert(
+      {
+        user_id: user.id,
+        email,
+        display_name: displayName,
+        last_seen_at: new Date().toISOString(),
+      },
+      { onConflict: "user_id" },
     )
-    .bind(user.email, user.displayName, now, now)
-    .run();
-  const member = await db
-    .prepare(
-      "SELECT email, display_name AS displayName, role FROM beta_members WHERE email = ?",
-    )
-    .bind(user.email)
-    .first<BetaViewer>();
-  if (!member) throw new Error("Unable to create the beta member record.");
-  return member;
+    .select("user_id,email,display_name,role")
+    .single();
+  if (error || !data) {
+    throw new Error(error?.message ?? "Unable to create the beta member record.");
+  }
+
+  return {
+    userId: data.user_id,
+    email: data.email,
+    displayName: data.display_name,
+    role: data.role as BetaRole,
+  };
 }
 
 export async function getOptionalBetaViewer(): Promise<BetaViewer | null> {
-  const user = await getChatGPTUser();
+  if (!isSupabaseConfigured()) return null;
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   return user ? ensureBetaViewer(user) : null;
 }
 
@@ -50,12 +60,16 @@ export async function requireBetaViewer(
   returnTo: string,
   allowedRoles: BetaRole[] = ["student", "instructor", "admin"],
 ): Promise<BetaViewer> {
-  const user = await requireChatGPTUser(returnTo);
-  const viewer = await ensureBetaViewer(user);
+  const viewer = await getOptionalBetaViewer();
+  if (!viewer) redirect(`/signin?next=${encodeURIComponent(safeReturnTo(returnTo))}`);
   if (!allowedRoles.includes(viewer.role)) redirect("/dashboard");
   return viewer;
 }
 
-export async function betaDb() {
-  return database();
+function safeReturnTo(value: string) {
+  return value.startsWith("/") && !value.startsWith("//") ? value : "/dashboard";
+}
+
+function stringMetadata(value: unknown) {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
 }

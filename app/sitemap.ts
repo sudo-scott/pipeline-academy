@@ -1,4 +1,5 @@
 import type { MetadataRoute } from "next";
+import { siteUrl } from "../lib/site-url";
 export default function sitemap(): MetadataRoute.Sitemap {
   return [
     "",
@@ -12,7 +13,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     "/terms",
     "/accessibility",
   ].map((path) => ({
-    url: `https://pipeline-academy.etozinplayz.chatgpt.site${path}`,
+    url: `${siteUrl()}${path}`,
     lastModified: new Date("2026-07-14"),
     changeFrequency: path === "" ? "weekly" : "monthly",
     priority: path === "" ? 1 : 0.7,

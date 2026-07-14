@@ -2056,6 +2056,9 @@ function Glossary() {
 }
 
 function SignIn() {
+  const [email, setEmail] = useState("");
+  const [sending, setSending] = useState(false);
+  const [message, setMessage] = useState("");
   return (
     <div className="auth">
       <section>
@@ -2064,7 +2067,7 @@ function SignIn() {
           <Pill tone="cyan">CLASSMATE BETA</Pill>
           <h1>Your progress now follows you between devices.</h1>
           <p>
-            Sign in with ChatGPT to save lesson completion, personal notes,
+            Sign in with your email to save lesson completion, personal notes,
             challenge drafts, and submission history securely.
           </p>
           <div className="auth-icons">
@@ -2078,9 +2081,27 @@ function SignIn() {
         <small>Private beta · Student access by default</small>
       </section>
       <form
-        onSubmit={(e) => {
+        onSubmit={async (e) => {
           e.preventDefault();
-          location.href = "/signin-with-chatgpt?return_to=%2Fdashboard";
+          setSending(true);
+          setMessage("");
+          try {
+            const response = await fetch("/api/auth/magic-link", {
+              method: "POST",
+              headers: { "content-type": "application/json" },
+              body: JSON.stringify({ email }),
+            });
+            const result = (await response.json()) as { error?: string };
+            setMessage(
+              response.ok
+                ? "Check your inbox for a secure sign-in link."
+                : result.error ?? "Unable to send a sign-in link.",
+            );
+          } catch {
+            setMessage("Unable to reach the sign-in service. Try again.");
+          } finally {
+            setSending(false);
+          }
         }}
       >
         <h2>Continue to your workspace</h2>
@@ -2094,11 +2115,25 @@ function SignIn() {
             </span>
           </div>
         </div>
+        <label>
+          School or personal email
+          <input
+            autoComplete="email"
+            inputMode="email"
+            name="email"
+            onChange={(event) => setEmail(event.target.value)}
+            placeholder="you@example.com"
+            required
+            type="email"
+            value={email}
+          />
+        </label>
         <button className="primary full" type="submit">
-          Sign in with ChatGPT <ArrowRight />
+          {sending ? "Sending link..." : "Email me a sign-in link"} <ArrowRight />
         </button>
+        {message && <p role="status">{message}</p>}
         <div className="auth-note">
-          <LockKeyhole /> Pipeline Academy never receives your password.
+          <LockKeyhole /> Passwordless sign-in. Your progress stays private.
         </div>
       </form>
     </div>
@@ -2189,8 +2224,9 @@ function Account({
           <div className="button-row end">
             <button
               className="secondary"
-              onClick={() => {
-                location.href = "/signout-with-chatgpt?return_to=%2F";
+              onClick={async () => {
+                await fetch("/auth/signout", { method: "POST" });
+                location.href = "/";
               }}
             >
               Sign out

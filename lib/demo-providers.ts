@@ -75,8 +75,8 @@ export const challengePersistence: ChallengePersistenceProvider =
   new BetaChallengeProvider();
 
 export const providerStatus = {
-  authentication: "chatgpt-sign-in",
-  database: "cloudflare-d1",
+  authentication: "supabase-magic-link",
+  database: "supabase-postgres",
   email: "captured-locally",
   github: "simulated-webhook-events",
   pipeline: "deterministic-stage-engine",

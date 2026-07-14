@@ -1,105 +1,61 @@
 # Pipeline Academy
 
-Pipeline Academy is an interactive CI/CD learning platform for new developers. It combines a guided course, progress dashboard, quizzes, a realistic pipeline simulator, glossary, and demo instructor/admin workspaces.
+Pipeline Academy is an interactive CI/CD learning platform for new developers. It combines a guided course, progress dashboard, quizzes, a pipeline simulator, glossary, challenge workspace, and demo instructor/admin surfaces.
 
-## What works
+## Production stack
 
-- Responsive public site, curriculum, pricing, support, and policy pages
-- Student dashboard with course progress, recommendations, streaks, and achievements
-- Structured lesson with an ordering exercise, notes, bookmarks, and completion feedback
-- Five-question quiz with scoring, pass/fail results, retries, and explanations
-- Pipeline Lab with 14 stages, five failures, logs, hints, fixes, reruns, approval, deployment, and run history
-- Compact practice dashboard with a daily challenge, ratings, submissions, pipeline runs, topic mastery, and activity calendar
-- Searchable challenge library with status, difficulty, topic, acceptance, attempts, and score filters
-- Resizable-style three-panel challenge workspace with Monaco YAML editing, visible checks, hidden submission validation, scoring, drafts, and restorable submission history
-- Community discussions with voting, bookmarking, reporting, and a validated post composer
-- Professional challenge and Pipeline Lab leaderboards plus read/unread notifications
-- Searchable glossary and global search
-- ChatGPT sign-in with server-created beta student accounts
-- Instructor lesson editor and publishing flow
-- Admin analytics, user management, and report-review surfaces
-- Dark/light themes, keyboard focus, reduced motion, loading-safe layout, and mobile navigation
-- Normalized D1/Drizzle data model and generated migration
+- Next.js App Router on Vercel
+- Supabase passwordless authentication
+- Supabase Postgres with Row Level Security
+- React 19, TypeScript, Zod, Monaco, Recharts, and Framer Motion
+
+Public course pages work without an account. Student workspaces require a secure email sign-in link. Lesson completion, notes, challenge drafts, and submission history follow the student between devices.
 
 ## Local development
 
-Requirements: Node.js 22.13 or newer.
+Requirements: Node.js 22.13 or newer and a Supabase project.
 
 ```bash
 npm install
+copy .env.example .env.local
 npm run dev
 ```
 
-Open `http://localhost:3000`. The public catalog works anonymously. Hosted student workspaces use ChatGPT sign-in; only theme preference remains device-local.
+Set these values in `.env.local`:
 
-On Windows, if the environment-variable syntax in the package script is not supported by your shell, run:
-
-```powershell
-$env:WRANGLER_LOG_PATH='.wrangler/wrangler.log'
-npx vinext dev
+```dotenv
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+NEXT_PUBLIC_SITE_URL=http://localhost:3000
 ```
 
-## Beta workspaces
+Apply [`supabase/migrations/20260714000000_classmate_beta.sql`](supabase/migrations/20260714000000_classmate_beta.sql) in the Supabase SQL editor. Add both `http://localhost:3000/auth/callback` and the production callback URL to the Supabase authentication redirect allow list.
 
-Open `/signin` and select **Sign in with ChatGPT**. New identities receive student access by default. Instructor and administrator routes are checked on the server against the role stored in D1.
+## Vercel deployment
 
-Lesson completion, notes, challenge drafts, and submission history are saved to D1 through authenticated endpoints and follow the student between devices.
+1. Import this GitHub repository into Vercel.
+2. Add `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, and `NEXT_PUBLIC_SITE_URL` to the Vercel project.
+3. Set `NEXT_PUBLIC_SITE_URL` to the final HTTPS production origin without a trailing slash.
+4. Deploy, then add `https://your-domain/auth/callback` to the Supabase redirect allow list.
 
-## Database
-
-The logical D1 binding is `DB` in `.openai/hosting.json`. The normalized schema is in `db/schema.ts` and covers users, profiles, courses, lessons, progress, quizzes, projects, achievements, notes, notifications, certificates, pipeline runs, reports, and settings.
-
-Generate migrations after schema changes:
-
-```bash
-npm run db:generate
-```
-
-The generated migration is committed under `drizzle/`. Seed examples are in `db/seed.sql`. Hosted Sites owns physical D1 provisioning and injects the binding at runtime.
-
-## Supabase integration
-
-The beta uses dispatch-owned ChatGPT sign-in and does not require Supabase. If a future public identity system is needed:
-
-1. Copy `.env.example` to `.env.local`.
-2. Add the public project URL and anon key; keep the service-role key server-only.
-3. Replace the ChatGPT identity adapter with reviewed Supabase server utilities.
-4. Mirror the models in `db/schema.ts` in PostgreSQL.
-5. Add Row Level Security policies based on authenticated user ownership and server-verified roles.
-6. Configure email verification, password reset redirects, avatar storage limits, and provider callbacks.
-
-Never expose a service-role key to client components.
+No Supabase service-role key is used by the application. Every persisted student record is owned by the authenticated user and protected by Row Level Security. New accounts always receive the `student` role; the database trigger prevents clients from promoting their own role.
 
 ## Validation
 
 ```bash
-npm run build
+npm run typecheck
 npm run lint
 npm test
-npx tsc --noEmit
 ```
 
-Tests verify production metadata, the course and simulator content, public routes, authentication redirects, API rejection for anonymous requests, and deterministic challenge validation.
+`npm test` includes a production Next.js build and source-level product contracts.
 
-## Architecture
+## Project structure
 
-- `app/` — routes, application shell, responsive UI, metadata, sitemap, robots
-- `lib/course-data.ts` — 14-module curriculum, glossary, quizzes, achievements
-- `lib/pipeline.ts` — pipeline stages, statuses, and failure scenarios
-- `db/` — Drizzle schema, database adapter, and seed data
-- `drizzle/` — generated D1 migration
-- `tests/` — rendered-route and content-contract tests
-- `worker/` — Cloudflare Worker entry point used by vinext
+- `app/` — routes, UI, metadata, authentication endpoints, and beta-state API
+- `features/` — challenge data and practice workspace
+- `lib/` — curriculum, pipeline engine, persistence contract, and Supabase helpers
+- `supabase/migrations/` — production Postgres schema, policies, and role protection
+- `tests/` — product and deployment contracts
 
-The authenticated beta persists its core student journey in D1. `lib/demo-providers.ts` keeps the replaceable challenge-persistence contract but now uses the authenticated beta API. `.env.example` lists provider selectors for authentication, database, email, GitHub, pipeline execution, deployment, storage, payments, and analytics. All state updates use Zod validation and server-derived ownership.
-
-## Deployment
-
-Run a clean build, package the generated `dist/` output with the Sites packaging helper, save a version, and deploy it through Sites. Runtime secrets belong in the hosting environment, not in source control.
-
-## Troubleshooting
-
-- Blank or stale preview: restart the dev server and reload `http://localhost:3000`.
-- D1 unavailable locally: confirm the `DB` binding and local database path in `vite.config.ts`.
-- Migration changed: rerun `npm run db:generate` and inspect the SQL before deployment.
-- Production auth redirects fail: verify the deployed URL and the dispatch-owned ChatGPT sign-in paths.
+Secrets belong in local or Vercel environment variables and must never be committed.
