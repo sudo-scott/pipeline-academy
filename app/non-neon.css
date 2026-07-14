@@ -1,0 +1,502 @@
+:root {
+  --background: #f5f5f4;
+  --background-secondary: #eeeeec;
+  --panel: #ffffff;
+  --panel-elevated: #fafafa;
+  --panel-hover: #f0f0ee;
+  --border: #d8d8d5;
+  --border-subtle: #e5e5e2;
+  --text-primary: #242424;
+  --text-secondary: #5e5e5e;
+  --text-muted: #8a8a8a;
+  --text-disabled: #b0b0b0;
+  --accent: #b66f16;
+  --accent-hover: #9f5f12;
+  --accent-muted: #f1e2cc;
+  --success: #437a55;
+  --success-background: #e7f0e9;
+  --error: #a94c48;
+  --error-background: #f5e7e6;
+  --warning: #8d7137;
+  --warning-background: #f3eddf;
+  --info: #55758e;
+  --info-background: #e6edf2;
+
+  /* Compatibility aliases for the original component system. */
+  --bg: var(--background);
+  --surface: var(--panel);
+  --surface2: var(--background-secondary);
+  --text: var(--text-primary);
+  --muted: var(--text-secondary);
+  --line: var(--border);
+  --nav: var(--background-secondary);
+  --cyan: var(--accent);
+  --blue: var(--accent);
+  --green: var(--success);
+  --red: var(--error);
+  --yellow: var(--warning);
+  --violet: var(--text-secondary);
+  --amber: var(--accent);
+  --amber-soft: var(--accent-muted);
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+
+[data-theme="dark"] {
+  --background: #1a1a1a;
+  --background-secondary: #202020;
+  --panel: #262626;
+  --panel-elevated: #2b2b2b;
+  --panel-hover: #303030;
+  --border: #363636;
+  --border-subtle: #303030;
+  --text-primary: #f0f0f0;
+  --text-secondary: #b8b8b8;
+  --text-muted: #7f7f7f;
+  --text-disabled: #5f5f5f;
+  --accent: #d99124;
+  --accent-hover: #e0a03a;
+  --accent-muted: #6f5228;
+  --success: #4f9b68;
+  --success-background: #26372c;
+  --error: #c75b57;
+  --error-background: #3b2928;
+  --warning: #b9954f;
+  --warning-background: #3a3325;
+  --info: #6487a8;
+  --info-background: #29333c;
+  --bg: var(--background);
+  --surface: var(--panel);
+  --surface2: var(--background-secondary);
+  --text: var(--text-primary);
+  --muted: var(--text-secondary);
+  --line: var(--border);
+  --nav: var(--background-secondary);
+  --cyan: var(--accent);
+  --blue: var(--accent);
+  --green: var(--success);
+  --red: var(--error);
+  --yellow: var(--warning);
+  --violet: var(--text-secondary);
+  --amber: var(--accent);
+  --amber-soft: var(--accent-muted);
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+}
+
+* {
+  box-shadow: none !important;
+  text-shadow: none !important;
+}
+
+html {
+  scroll-behavior: auto;
+}
+
+body,
+.challenge-workspace {
+  background: var(--background);
+}
+
+button,
+article,
+.panel,
+.pipeline-window,
+.failure-card,
+.notification-popover,
+.dialog > section {
+  box-shadow: none !important;
+}
+
+.topbar,
+.dialog {
+  backdrop-filter: none;
+}
+
+.topbar {
+  height: 58px;
+  background: var(--background);
+  border-color: var(--border);
+}
+
+.mobile-nav,
+.notification-popover {
+  background: var(--panel-elevated);
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+summary:focus-visible {
+  outline-color: var(--accent);
+}
+
+.logo-mark,
+.avatar,
+.feature-icon,
+.feature-icon.f1,
+.feature-icon.f2,
+.stat > span,
+.glossary article > span,
+.auth-icons span,
+.daily-icon,
+.achievement,
+.achievement.a1,
+.achievement.a2,
+.dashboard-achievements .achievement {
+  background: var(--panel-elevated);
+  border-color: var(--border);
+  color: var(--text-secondary);
+}
+
+.logo-mark {
+  border-radius: 6px;
+  color: var(--accent);
+}
+
+.primary,
+.daily-strip button,
+.tool-action.submit,
+.lesson-preview button {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #1a1a1a;
+  box-shadow: none;
+}
+
+.primary:hover,
+.daily-strip button:hover,
+.tool-action.submit:hover,
+.lesson-preview button:hover {
+  background: var(--accent-hover);
+}
+
+.secondary,
+.search-button,
+.icon-btn,
+.tool-action {
+  background: var(--panel-elevated);
+  border-color: var(--border);
+  color: var(--text-primary);
+}
+
+.danger,
+.diagnose {
+  background: var(--error-background);
+  border-color: color-mix(in srgb, var(--error) 55%, var(--border));
+  color: var(--error);
+}
+
+.success {
+  background: var(--success-background);
+  border-color: color-mix(in srgb, var(--success) 55%, var(--border));
+  color: var(--success);
+}
+
+.pill,
+.pill.cyan,
+.pill.violet {
+  background: var(--panel-elevated);
+  border-color: var(--border);
+  color: var(--text-secondary);
+}
+
+.pill.green {
+  background: var(--success-background);
+  border-color: color-mix(in srgb, var(--success) 45%, var(--border));
+  color: var(--success);
+}
+
+.pill.red {
+  background: var(--error-background);
+  border-color: color-mix(in srgb, var(--error) 45%, var(--border));
+  color: var(--error);
+}
+
+.pill.yellow {
+  background: var(--warning-background);
+  border-color: color-mix(in srgb, var(--warning) 45%, var(--border));
+  color: var(--warning);
+}
+
+.progress i {
+  background: var(--accent);
+}
+
+.hero h1 span,
+.lab-promo h2 span,
+.workspace-head small,
+.lesson-preview small,
+.panel-title button,
+.concept-grid article button,
+.failure-card > button,
+.glossary button,
+.recent-table > header button,
+.mastery > header button,
+.dashboard-achievements > header button {
+  color: var(--accent);
+}
+
+.pipeline-window,
+.failure-card,
+.logs > pre {
+  background: #191919;
+  border-color: #353535;
+  color: #d7d7d7;
+}
+
+.window-bar,
+.challenge-bar,
+.workspace-tabs,
+.challenge-editor > header,
+.challenge-results > header {
+  background: #202020;
+  border-color: #363636;
+  color: #d7d7d7;
+}
+
+.window-bar > span,
+.window-bar > span:first-child,
+.window-bar > span:nth-child(2),
+.window-bar > span:nth-child(3) {
+  background: #666;
+}
+
+.stage-icon {
+  background: #262626;
+  border-color: #3a3a3a;
+  color: #b8b8b8;
+  border-radius: 6px;
+}
+
+.mini-pipeline > div > i {
+  background: #444;
+}
+
+.pipeline-window pre,
+.failure-card pre {
+  background: #171717;
+  border-color: #353535;
+  color: #b8b8b8;
+}
+
+.pipeline-window pre span,
+.pipeline-window pre b,
+.failure-card pre span {
+  color: #b8b8b8;
+}
+
+.pipeline-window pre em {
+  color: #7f7f7f;
+}
+
+.failure-card pre b {
+  color: var(--error);
+}
+
+.final-cta,
+.auth > section {
+  background: var(--background-secondary);
+  border-color: var(--border);
+  color: var(--text-primary);
+}
+
+.final-cta p,
+.auth > section p {
+  color: var(--text-secondary);
+}
+
+.filters button.active,
+.role-picker > button.active {
+  border-color: var(--accent-muted);
+  background: var(--panel-hover);
+  color: var(--text-primary);
+}
+
+.side-nav button.active,
+.side-nav button:hover {
+  background: var(--panel-hover);
+  color: var(--text-primary);
+}
+
+.objectives,
+.concept-note,
+.daily-strip,
+.daily-dashboard,
+.failure-card > p,
+.approval {
+  background: var(--panel-elevated);
+  border-color: var(--border);
+}
+
+.objectives {
+  border-left: 3px solid var(--accent-muted);
+}
+
+.objectives h3,
+.objectives ul,
+.lesson-section blockquote {
+  color: var(--text-secondary);
+}
+
+.lesson-section blockquote {
+  background: var(--panel-elevated);
+  border-color: var(--border);
+}
+
+.stage-panel,
+.logs {
+  border-radius: 6px;
+}
+
+.stage-panel > button {
+  background: var(--panel);
+}
+
+.stage-panel > button:hover,
+.stage-panel > button.selected {
+  background: var(--panel-hover);
+}
+
+.stage-panel > button.selected {
+  border-left-color: var(--accent-muted);
+}
+
+.stage-panel > button.running > span:first-child {
+  color: var(--warning);
+  border-color: var(--warning);
+}
+
+.stage-panel > button.passed > span:first-child {
+  color: var(--success);
+  border-color: var(--success);
+}
+
+.stage-panel > button.failed > span:first-child {
+  color: var(--error);
+  border-color: var(--error);
+}
+
+.challenge-description,
+.challenge-editor,
+.challenge-results {
+  background: #1e1e1e;
+  border-color: #353535;
+  color: #f0f0f0;
+}
+
+.challenge-description p,
+.challenge-description li,
+.challenge-description summary,
+.challenge-editor > header,
+.challenge-results > header {
+  color: #b8b8b8;
+}
+
+.challenge-description code,
+.recommended,
+.execution-meta,
+.tool-action {
+  background: #262626;
+  border-color: #363636;
+  color: #d7d7d7;
+}
+
+.tool-action.run {
+  border-color: #4a4a4a;
+  color: #d7d7d7;
+}
+
+.submission-summary {
+  background: var(--warning-background);
+  border-color: var(--warning);
+}
+
+.submission-summary.accepted {
+  background: var(--success-background);
+  border-color: var(--success);
+}
+
+.difficulty.easy {
+  color: var(--success);
+}
+
+.difficulty.medium {
+  color: var(--warning);
+}
+
+.difficulty.hard {
+  color: var(--error);
+}
+
+.activity-calendar span,
+.calendar-panel footer i {
+  background: #303030;
+}
+
+.activity-calendar .level-1,
+.calendar-panel .level-1 {
+  background: #40382d;
+}
+
+.activity-calendar .level-2,
+.calendar-panel .level-2 {
+  background: #57462f;
+}
+
+.activity-calendar .level-3,
+.calendar-panel .level-3 {
+  background: #705432;
+}
+
+.activity-calendar .level-4,
+.calendar-panel .level-4 {
+  background: #8a6330;
+}
+
+.activity-calendar .level-5,
+.calendar-panel .level-5 {
+  background: #a47431;
+}
+
+.pricing article.featured {
+  transform: none;
+  border-color: var(--accent-muted);
+}
+
+[data-theme="light"] .challenge-workspace {
+  background: var(--background);
+}
+
+[data-theme="light"] .challenge-description,
+[data-theme="light"] .challenge-results {
+  background: var(--panel);
+  border-color: var(--border);
+  color: var(--text-primary);
+}
+
+[data-theme="light"] .challenge-bar,
+[data-theme="light"] .workspace-tabs,
+[data-theme="light"] .challenge-results > header {
+  background: var(--background-secondary);
+  border-color: var(--border);
+  color: var(--text-primary);
+}
+
+[data-theme="light"] .challenge-description p,
+[data-theme="light"] .challenge-description li,
+[data-theme="light"] .challenge-description summary,
+[data-theme="light"] .challenge-results > header {
+  color: var(--text-secondary);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

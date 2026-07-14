@@ -6,6 +6,7 @@ import "./components2.css";
 import "./responsive.css";
 import "./practice.css";
 import "./practice-responsive.css";
+import "./non-neon.css";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
