@@ -63,6 +63,10 @@ import {
   quizQuestions,
 } from "../lib/course-data";
 import { freshStages, scenarios, type PipelineStage } from "../lib/pipeline";
+import {
+  ChallengeLibrary,
+  ChallengeWorkspace,
+} from "../features/challenges/challenge-practice";
 
 type Role = "student" | "instructor" | "admin";
 function Github() {
@@ -74,6 +78,10 @@ type View =
   | "dashboard"
   | "lesson"
   | "quiz"
+  | "challenges"
+  | "challenge"
+  | "community"
+  | "leaderboard"
   | "lab"
   | "glossary"
   | "signin"
@@ -92,6 +100,10 @@ const paths: Record<View, string> = {
   dashboard: "/dashboard",
   lesson: "/learn/software-delivery",
   quiz: "/quiz/ci-basics",
+  challenges: "/challenges",
+  challenge: "/challenge/fix-node-pipeline",
+  community: "/discuss",
+  leaderboard: "/leaderboard",
   lab: "/lab",
   glossary: "/glossary",
   signin: "/signin",
@@ -113,6 +125,7 @@ const status = {
   failed: [XCircle, "Failed"],
   skipped: [ArrowRight, "Skipped"],
   cancelled: [Square, "Cancelled"],
+  waiting_approval: [ShieldCheck, "Waiting for Approval"],
 } as const;
 
 function Logo({ compact = false }: { compact?: boolean }) {
@@ -185,6 +198,7 @@ export default function AcademyApp({
     [role, setRole] = useState<Role>("student"),
     [signed, setSigned] = useState(false),
     [search, setSearch] = useState(false),
+    [notificationsOpen, setNotificationsOpen] = useState(false),
     [mobile, setMobile] = useState(false),
     [toast, setToast] = useState("");
   useEffect(() => {
@@ -226,6 +240,7 @@ export default function AcademyApp({
   const nav = (v: View) => {
     setView(v);
     setMobile(false);
+    setNotificationsOpen(false);
     history.pushState({}, "", paths[v]);
     scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -241,14 +256,19 @@ export default function AcademyApp({
         Skip to content
       </a>
       <header className="topbar">
-        <button className="brand" onClick={() => nav("home")}>
+        <button
+          className="brand"
+          onClick={() => nav(signed ? "dashboard" : "home")}
+        >
           <Logo />
         </button>
-        <nav className="desktop-nav">
-          <button onClick={() => nav("curriculum")}>Curriculum</button>
+        <nav className="desktop-nav compact-nav">
+          <button onClick={() => nav("curriculum")}>Learn</button>
+          <button onClick={() => nav("challenges")}>Challenges</button>
           <button onClick={() => nav("lab")}>Pipeline Lab</button>
-          <button onClick={() => nav("glossary")}>Glossary</button>
-          <button onClick={() => nav("pricing")}>Pricing</button>
+          <button onClick={() => nav("quiz")}>Quizzes</button>
+          <button onClick={() => nav("community")}>Discuss</button>
+          <button onClick={() => nav("leaderboard")}>Leaderboard</button>
         </nav>
         <div className="top-actions">
           <button
@@ -267,6 +287,23 @@ export default function AcademyApp({
           >
             {dark ? <Sun /> : <Moon />}
           </button>
+          {signed && (
+            <button
+              className="daily-nav desktop-only"
+              onClick={() => nav("challenge")}
+            >
+              <Zap /> Daily
+            </button>
+          )}
+          {signed && (
+            <button
+              className="icon-btn"
+              onClick={() => setNotificationsOpen(!notificationsOpen)}
+              aria-label="Open notifications"
+            >
+              <Bell />
+            </button>
+          )}
           {signed ? (
             <button
               className="avatar"
@@ -304,10 +341,12 @@ export default function AcademyApp({
         {mobile && (
           <nav className="mobile-nav">
             {[
-              ["Curriculum", "curriculum"],
+              ["Learn", "curriculum"],
+              ["Challenges", "challenges"],
               ["Pipeline Lab", "lab"],
-              ["Glossary", "glossary"],
-              ["Pricing", "pricing"],
+              ["Quizzes", "quiz"],
+              ["Discuss", "community"],
+              ["Leaderboard", "leaderboard"],
               [
                 signed ? "Dashboard" : "Sign in",
                 signed ? "dashboard" : "signin",
@@ -333,6 +372,17 @@ export default function AcademyApp({
             {view === "dashboard" && <Dashboard nav={nav} />}{" "}
             {view === "lesson" && <Lesson nav={nav} toast={setToast} />}{" "}
             {view === "quiz" && <Quiz nav={nav} />}{" "}
+            {view === "challenges" && (
+              <ChallengeLibrary openChallenge={() => nav("challenge")} />
+            )}{" "}
+            {view === "challenge" && (
+              <ChallengeWorkspace
+                exit={() => nav("challenges")}
+                notify={setToast}
+              />
+            )}{" "}
+            {view === "community" && <Community toast={setToast} />}{" "}
+            {view === "leaderboard" && <Leaderboard />}{" "}
             {view === "lab" && <Lab toast={setToast} />}{" "}
             {view === "glossary" && <Glossary />}{" "}
             {view === "signin" && <SignIn login={login} />}{" "}
@@ -352,6 +402,12 @@ export default function AcademyApp({
       </main>
       {view === "home" && <Footer nav={nav} />}{" "}
       {search && <SearchDialog close={() => setSearch(false)} nav={nav} />}{" "}
+      {notificationsOpen && (
+        <Notifications
+          close={() => setNotificationsOpen(false)}
+          toast={setToast}
+        />
+      )}{" "}
       {toast && (
         <div className="toast">
           <CheckCircle2 />
@@ -826,6 +882,247 @@ function Stat({
 }
 
 function Dashboard({ nav }: { nav: (v: View) => void }) {
+  const activity = Array.from({ length: 84 }, (_, i) => (i * 7 + (i % 5)) % 6);
+  return (
+    <div className="practice-dashboard">
+      <header className="practice-dashboard-head">
+        <div>
+          <small>GOOD AFTERNOON, ALEX</small>
+          <h1>Ready for the next pipeline?</h1>
+          <p>Six-day streak · 420 XP until your next level</p>
+        </div>
+        <button className="daily-dashboard" onClick={() => nav("challenge")}>
+          <Zap />
+          <span>
+            <small>DAILY CHALLENGE · +40 XP</small>
+            <b>Repair a Node.js CI Pipeline</b>
+          </span>
+          <span>
+            12h left <ChevronRight />
+          </span>
+        </button>
+      </header>
+      <div className="practice-metrics">
+        <div>
+          <span>
+            <BookOpen />
+          </span>
+          <small>Course completion</small>
+          <b>18%</b>
+          <Progress value={18} />
+        </div>
+        <div>
+          <span>
+            <CheckCircle2 />
+          </span>
+          <small>Challenges solved</small>
+          <b>
+            3 <em>/ 42</em>
+          </b>
+          <p>2 attempted</p>
+        </div>
+        <div>
+          <span>
+            <Trophy />
+          </span>
+          <small>Challenge rating</small>
+          <b>1,248</b>
+          <p className="positive">+42 this week</p>
+        </div>
+        <div>
+          <span>
+            <Bot />
+          </span>
+          <small>Pipeline Lab rating</small>
+          <b>1,315</b>
+          <p>4 runs this week</p>
+        </div>
+        <div>
+          <span>
+            <Zap />
+          </span>
+          <small>Learning streak</small>
+          <b>6 days</b>
+          <p>Best: 9 days</p>
+        </div>
+      </div>
+      <div className="practice-dashboard-grid">
+        <section className="dashboard-main">
+          <article className="compact-panel continue-practice">
+            <header>
+              <span>
+                <small>CONTINUE LEARNING</small>
+                <b>Module 1 · Software Delivery Basics</b>
+              </span>
+              <span>18 min</span>
+            </header>
+            <h2>From idea to production</h2>
+            <p>
+              Follow one change through review, automated checks, staging, and
+              production.
+            </p>
+            <Progress value={35} label="Lesson progress" />
+            <button className="primary" onClick={() => nav("lesson")}>
+              Continue lesson <ArrowRight />
+            </button>
+          </article>
+          <article className="compact-panel recommended-challenge">
+            <header>
+              <span>
+                <small>RECOMMENDED CHALLENGE</small>
+                <b>Based on your build-process quiz</b>
+              </span>
+              <Pill tone="green">EASY</Pill>
+            </header>
+            <h2>Cache npm Dependencies Safely</h2>
+            <p>
+              Speed up repeated installs without letting an outdated cache hide
+              lockfile changes.
+            </p>
+            <div>
+              <span>Builds</span>
+              <span>Caching</span>
+              <span>68.9% acceptance</span>
+            </div>
+            <button className="secondary" onClick={() => nav("challenges")}>
+              Open challenge <ArrowRight />
+            </button>
+          </article>
+          <article className="compact-panel recent-table">
+            <header>
+              <h3>Recent submissions</h3>
+              <button onClick={() => nav("challenges")}>View all</button>
+            </header>
+            {[
+              [
+                "Repair a Node.js CI Pipeline",
+                "Partially Correct",
+                "80%",
+                "18m",
+              ],
+              ["Remove an Exposed Secret", "Accepted", "100%", "Yesterday"],
+              ["CI/CD Foundations Quiz", "Passed", "88%", "2d"],
+            ].map((r) => (
+              <div key={r[0]}>
+                <span>
+                  <b>{r[0]}</b>
+                  <small>{r[3]} ago</small>
+                </span>
+                <span
+                  className={
+                    r[1] === "Accepted" || r[1] === "Passed" ? "ok" : "warn"
+                  }
+                >
+                  {r[1]}
+                </span>
+                <b>{r[2]}</b>
+                <ChevronRight />
+              </div>
+            ))}
+          </article>
+          <article className="compact-panel recent-table">
+            <header>
+              <h3>Recent pipeline runs</h3>
+              <button onClick={() => nav("lab")}>Open Lab</button>
+            </header>
+            {[
+              ["deploy #1842", "Passed", "2m 14s", "main"],
+              ["deploy #1841", "Failed", "48s", "feature/invite"],
+              ["security #1840", "Passed", "1m 22s", "main"],
+            ].map((r) => (
+              <div key={r[0]}>
+                <span>
+                  <b>{r[0]}</b>
+                  <small>{r[3]}</small>
+                </span>
+                <span className={r[1] === "Passed" ? "ok" : "failed"}>
+                  {r[1]}
+                </span>
+                <code>{r[2]}</code>
+                <ChevronRight />
+              </div>
+            ))}
+          </article>
+        </section>
+        <aside className="dashboard-aside">
+          <article className="compact-panel calendar-panel">
+            <header>
+              <h3>Activity</h3>
+              <span>Last 12 weeks</span>
+            </header>
+            <div
+              className="activity-calendar"
+              aria-label="Learning activity calendar"
+            >
+              {activity.map((level, i) => (
+                <span
+                  key={i}
+                  className={`level-${level}`}
+                  title={`${level} learning events`}
+                />
+              ))}
+            </div>
+            <footer>
+              <span>Less</span>
+              {[0, 1, 2, 3, 4, 5].map((x) => (
+                <i className={`level-${x}`} key={x} />
+              ))}
+              <span>More</span>
+            </footer>
+            <div className="calendar-legend">
+              <span>
+                <BookOpen /> 8 lessons
+              </span>
+              <span>
+                <CheckCircle2 /> 6 submissions
+              </span>
+              <span>
+                <Bot /> 4 pipeline runs
+              </span>
+            </div>
+          </article>
+          <article className="compact-panel mastery">
+            <header>
+              <h3>Topic mastery</h3>
+              <button onClick={() => nav("curriculum")}>Details</button>
+            </header>
+            {[
+              ["CI fundamentals", 82],
+              ["Testing", 68],
+              ["Builds", 54],
+              ["YAML", 42],
+            ].map((t) => (
+              <div key={String(t[0])}>
+                <span>{t[0]}</span>
+                <b>{t[1]}%</b>
+                <Progress value={Number(t[1])} />
+              </div>
+            ))}
+          </article>
+          <article className="compact-panel dashboard-achievements">
+            <header>
+              <h3>Achievements</h3>
+              <button onClick={() => nav("account")}>View all</button>
+            </header>
+            {achievements.slice(0, 3).map((a, i) => (
+              <div key={a[0]}>
+                <span className={`achievement a${i}`}>
+                  <Award />
+                </span>
+                <span>
+                  <b>{a[0]}</b>
+                  <small>{a[1]}</small>
+                </span>
+              </div>
+            ))}
+          </article>
+        </aside>
+      </div>
+    </div>
+  );
+}
+
+export function DashboardLegacy({ nav }: { nav: (v: View) => void }) {
   const data = [
     { d: "M", v: 18 },
     { d: "T", v: 34 },
@@ -1353,7 +1650,7 @@ function Lab({ toast }: { toast: (s: string) => void }) {
           i === 10
             ? {
                 ...x,
-                status: "queued",
+                status: "waiting_approval",
                 log: "Awaiting authorized production approval…",
               }
             : x,
@@ -1373,30 +1670,27 @@ function Lab({ toast }: { toast: (s: string) => void }) {
           : x,
       ),
     );
-    timer.current = setTimeout(
-      () =>
-        setStages((s) => {
-          const fail = !fixed && idx === scenario.stage,
-            next: PipelineStage[] = s.map((x, i) =>
-              i === idx
-                ? {
-                    ...x,
-                    status: fail ? "failed" : "passed",
-                    duration: `${(2.1 + idx * 1.7).toFixed(1)}s`,
-                    log: fail
-                      ? scenario.log
-                      : `$ ${x.name.toLowerCase()}\n✓ Completed successfully`,
-                  }
-                : x,
-            );
-          if (fail) {
-            setRunning(false);
-            toast(`${scenario.name} stopped the pipeline`);
-          } else setTimeout(() => step(idx + 1), 80);
-          return next;
-        }),
-      450,
-    );
+    timer.current = setTimeout(() => {
+      const fail = !fixed && idx === scenario.stage;
+      setStages((s) =>
+        s.map((x, i) =>
+          i === idx
+            ? {
+                ...x,
+                status: fail ? "failed" : "passed",
+                duration: `${(2.1 + idx * 1.7).toFixed(1)}s`,
+                log: fail
+                  ? scenario.log
+                  : `$ ${x.name.toLowerCase()}\n✓ Completed successfully`,
+              }
+            : x,
+        ),
+      );
+      if (fail) {
+        setRunning(false);
+        toast(`${scenario.name} stopped the pipeline`);
+      } else setTimeout(() => step(idx + 1), 80);
+    }, 450);
   };
   const start = (from = 0) => {
     if (timer.current) clearTimeout(timer.current);
@@ -2327,6 +2621,279 @@ function Legal({ kind }: { kind: View }) {
         </p>
       </article>
     </Page>
+  );
+}
+
+function Community({ toast }: { toast: (message: string) => void }) {
+  const [votes, setVotes] = useState<Record<number, number>>({
+    1: 34,
+    2: 21,
+    3: 15,
+  });
+  const [composer, setComposer] = useState(false);
+  const [draft, setDraft] = useState("");
+  const posts = [
+    [
+      1,
+      "Why does npm ci fail when npm install works?",
+      "Maya Chen",
+      "Builds · Dependency management",
+      "A lockfile mismatch is usually a feature, not a nuisance. Here is how I learned to read the error…",
+      "12 replies",
+    ],
+    [
+      2,
+      "A visual explanation of delivery vs deployment",
+      "Noah Williams",
+      "CI/CD concepts",
+      "I drew the approval gate as a checkpoint between a release-ready artifact and production.",
+      "8 replies",
+    ],
+    [
+      3,
+      "Help diagnosing a flaky integration test",
+      "Priya Raman",
+      "Testing · Debugging",
+      "The same database test fails about one run in twenty. What signals would you collect first?",
+      "19 replies",
+    ],
+  ] as const;
+  return (
+    <Page>
+      <div className="community-head">
+        <div>
+          <span className="eyebrow">COMMUNITY</span>
+          <h1>Discuss delivery problems</h1>
+          <p>
+            Ask focused questions, compare approaches, and mark answers that
+            helped.
+          </p>
+        </div>
+        <button className="primary" onClick={() => setComposer(!composer)}>
+          New discussion
+        </button>
+      </div>
+      {composer && (
+        <form
+          className="discussion-composer"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (draft.trim().length < 20) {
+              toast("Add a little more detail before posting");
+              return;
+            }
+            setComposer(false);
+            setDraft("");
+            toast("Discussion posted in demo mode");
+          }}
+        >
+          <label>
+            Title
+            <input required placeholder="What are you trying to understand?" />
+          </label>
+          <label>
+            Body
+            <textarea
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              placeholder="Include the workflow, expected result, and relevant logs…"
+            />
+          </label>
+          <div className="button-row end">
+            <button
+              type="button"
+              className="secondary"
+              onClick={() => setComposer(false)}
+            >
+              Cancel
+            </button>
+            <button className="primary">Post discussion</button>
+          </div>
+        </form>
+      )}
+      <div className="discussion-layout">
+        <section className="discussion-list">
+          {posts.map((p) => (
+            <article key={p[0]}>
+              <button
+                className="vote"
+                onClick={() =>
+                  setVotes((v) => ({ ...v, [p[0]]: (v[p[0]] || 0) + 1 }))
+                }
+              >
+                ▲<b>{votes[p[0]]}</b>
+              </button>
+              <div>
+                <span>{p[3]}</span>
+                <h2>{p[1]}</h2>
+                <p>{p[4]}</p>
+                <footer>
+                  <b>{p[2]}</b>
+                  <span>{p[5]}</span>
+                  <button onClick={() => toast("Discussion bookmarked")}>
+                    <BookMarked /> Save
+                  </button>
+                  <button onClick={() => toast("Report dialog opened")}>
+                    <AlertTriangle /> Report
+                  </button>
+                </footer>
+              </div>
+            </article>
+          ))}
+        </section>
+        <aside className="community-guide">
+          <h3>Good technical questions</h3>
+          <ol>
+            <li>State the expected outcome.</li>
+            <li>Include the smallest relevant config.</li>
+            <li>Share sanitized logs.</li>
+            <li>Explain what you already tried.</li>
+          </ol>
+          <p>
+            <ShieldCheck /> Never post secrets, tokens, or private repository
+            data.
+          </p>
+        </aside>
+      </div>
+    </Page>
+  );
+}
+
+function Leaderboard() {
+  const leaders = [
+    [1, "Maya Chen", "Bolivia", 1482, 47],
+    [2, "Noah Williams", "Canada", 1435, 43],
+    [3, "Priya Raman", "India", 1418, 41],
+    [4, "Alex Morgan", "United States", 1248, 28],
+    [5, "Elena García", "Spain", 1207, 26],
+    [6, "Sam Okafor", "Nigeria", 1189, 24],
+  ];
+  return (
+    <Page>
+      <PageHead
+        eyebrow="SEASON 3 · JULY"
+        title="Practice leaderboard"
+        desc="Ratings reward accepted solutions and consistent learning—not submission volume."
+      />
+      <div className="rating-cards">
+        <div>
+          <small>YOUR RANK</small>
+          <b>#4</b>
+          <span>Top 8%</span>
+        </div>
+        <div>
+          <small>CHALLENGE RATING</small>
+          <b>1,248</b>
+          <span>+42 this week</span>
+        </div>
+        <div>
+          <small>PIPELINE LAB</small>
+          <b>1,315</b>
+          <span>3 green runs</span>
+        </div>
+      </div>
+      <div className="leader-table">
+        <header>
+          <span>Rank</span>
+          <span>Learner</span>
+          <span>Rating</span>
+          <span>Solved</span>
+        </header>
+        {leaders.map((l) => (
+          <div className={l[0] === 4 ? "you" : ""} key={l[0]}>
+            <span>#{l[0]}</span>
+            <span>
+              <span className="avatar tiny">
+                {String(l[1])
+                  .split(" ")
+                  .map((n) => n[0])
+                  .join("")}
+              </span>
+              <span>
+                <b>{l[1]}</b>
+                <small>
+                  {l[2]}
+                  {l[0] === 4 ? " · You" : ""}
+                </small>
+              </span>
+            </span>
+            <b>{l[3].toLocaleString()}</b>
+            <span>{l[4]}</span>
+          </div>
+        ))}
+      </div>
+    </Page>
+  );
+}
+
+function Notifications({
+  close,
+  toast,
+}: {
+  close: () => void;
+  toast: (message: string) => void;
+}) {
+  const [read, setRead] = useState<number[]>([3]);
+  const items = [
+    [1, "Achievement unlocked", "Pipeline Debugger · +150 XP", "2m"],
+    [2, "Daily challenge ready", "Repair a Node.js CI Pipeline", "1h"],
+    [3, "Quiz result", "CI/CD Foundations · 88%", "Yesterday"],
+    [
+      4,
+      "Instructor announcement",
+      "New Docker security lesson published",
+      "2d",
+    ],
+  ] as const;
+  return (
+    <div
+      className="notification-popover"
+      role="dialog"
+      aria-label="Notifications"
+    >
+      <header>
+        <b>Notifications</b>
+        <button onClick={close} aria-label="Close notifications">
+          <X />
+        </button>
+      </header>
+      <div>
+        {items.map((n) => (
+          <button
+            className={read.includes(n[0]) ? "read" : "unread"}
+            key={n[0]}
+            onClick={() =>
+              setRead((r) => (r.includes(n[0]) ? r : [...r, n[0]]))
+            }
+          >
+            <span />
+            <span>
+              <b>{n[1]}</b>
+              <small>{n[2]}</small>
+            </span>
+            <time>{n[3]}</time>
+          </button>
+        ))}
+      </div>
+      <footer>
+        <button
+          onClick={() => {
+            setRead(items.map((i) => i[0]));
+            toast("All notifications marked as read");
+          }}
+        >
+          Mark all read
+        </button>
+        <button
+          onClick={() => {
+            close();
+            toast("Notification preferences opened");
+          }}
+        >
+          Preferences
+        </button>
+      </footer>
+    </div>
   );
 }
 

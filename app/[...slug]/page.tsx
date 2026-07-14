@@ -5,6 +5,10 @@ const known = [
   "dashboard",
   "lesson",
   "quiz",
+  "challenges",
+  "challenge",
+  "community",
+  "leaderboard",
   "lab",
   "glossary",
   "signin",
@@ -28,11 +32,15 @@ export default async function CatchAll({
   const path = `/${slug.join("/")}`;
   const initial = path.startsWith("/learn")
     ? "lesson"
-    : path.startsWith("/quiz")
-      ? "quiz"
-      : known.includes(slug[0] as (typeof known)[number])
-        ? slug[0]
-        : "home";
+    : path.startsWith("/challenge/")
+      ? "challenge"
+      : path === "/discuss"
+        ? "community"
+        : path.startsWith("/quiz")
+          ? "quiz"
+          : known.includes(slug[0] as (typeof known)[number])
+            ? slug[0]
+            : "home";
   return (
     <AcademyApp initialView={initial as (typeof known)[number] | "home"} />
   );

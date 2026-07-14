@@ -26,3 +26,6 @@ INSERT INTO achievements (id, slug, title, description, xp, created_at, updated_
 ('ach-6','quiz-mastery','Quiz mastery','Scored at least 80 percent.',100,unixepoch(),unixepoch()),
 ('ach-7','seven-day-streak','Seven-day streak','Learned for one week.',200,unixepoch(),unixepoch()),
 ('ach-8','production-ready','Production ready','Completed the final project.',500,unixepoch(),unixepoch());
+
+INSERT INTO challenges (id, slug, title, difficulty, topic_tags, starter_files, visible_checks, hidden_checks, status, created_at, updated_at) VALUES
+('challenge-node-ci','fix-node-pipeline','Repair a Node.js CI Pipeline','Easy','["YAML","GitHub Actions","Testing"]','{".github/workflows/ci.yml":"starter"}','["checkout","npm-ci","lint","test","build","artifact"]','["least-privilege"]','published',unixepoch(),unixepoch());

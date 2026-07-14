@@ -5,7 +5,8 @@ export type StageStatus =
   | "passed"
   | "failed"
   | "skipped"
-  | "cancelled";
+  | "cancelled"
+  | "waiting_approval";
 export type PipelineStage = {
   id: number;
   name: string;

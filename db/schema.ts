@@ -387,6 +387,135 @@ export const pipelineStages = sqliteTable(
     uniqueIndex("pipeline_stages_run_position_uq").on(t.runId, t.position),
   ],
 );
+export const challenges = sqliteTable(
+  "challenges",
+  {
+    id: id(),
+    slug: text("slug").notNull(),
+    title: text("title").notNull(),
+    difficulty: text("difficulty").notNull(),
+    topicTags: text("topic_tags").notNull().default("[]"),
+    starterFiles: text("starter_files").notNull(),
+    visibleChecks: text("visible_checks").notNull(),
+    hiddenChecks: text("hidden_checks").notNull(),
+    status: text("status").notNull().default("draft"),
+    ...timestamps,
+  },
+  (t) => [uniqueIndex("challenges_slug_uq").on(t.slug)],
+);
+export const challengeSubmissions = sqliteTable(
+  "challenge_submissions",
+  {
+    id: id(),
+    challengeId: text("challenge_id")
+      .notNull()
+      .references(() => challenges.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    source: text("source").notNull(),
+    status: text("status").notNull(),
+    score: integer("score").notNull(),
+    executionMs: integer("execution_ms").notNull(),
+    pipelineDurationMs: integer("pipeline_duration_ms").notNull(),
+    results: text("results").notNull(),
+    createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  },
+  (t) => [
+    index("challenge_submissions_user_challenge_idx").on(
+      t.userId,
+      t.challengeId,
+    ),
+  ],
+);
+export const discussions = sqliteTable(
+  "discussions",
+  {
+    id: id(),
+    authorId: text("author_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    body: text("body").notNull(),
+    topic: text("topic").notNull(),
+    helpfulCommentId: text("helpful_comment_id"),
+    lockedAt: integer("locked_at", { mode: "timestamp" }),
+    ...timestamps,
+  },
+  (t) => [index("discussions_created_idx").on(t.createdAt)],
+);
+export const discussionComments = sqliteTable(
+  "discussion_comments",
+  {
+    id: id(),
+    discussionId: text("discussion_id")
+      .notNull()
+      .references(() => discussions.id, { onDelete: "cascade" }),
+    authorId: text("author_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    parentId: text("parent_id"),
+    body: text("body").notNull(),
+    createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+    updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  },
+  (t) => [
+    index("discussion_comments_thread_idx").on(t.discussionId, t.createdAt),
+  ],
+);
+export const discussionVotes = sqliteTable(
+  "discussion_votes",
+  {
+    id: id(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    discussionId: text("discussion_id")
+      .notNull()
+      .references(() => discussions.id, { onDelete: "cascade" }),
+    value: integer("value").notNull(),
+    createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  },
+  (t) => [
+    uniqueIndex("discussion_votes_user_discussion_uq").on(
+      t.userId,
+      t.discussionId,
+    ),
+  ],
+);
+export const dailyChallengeCompletions = sqliteTable(
+  "daily_challenge_completions",
+  {
+    id: id(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    challengeId: text("challenge_id")
+      .notNull()
+      .references(() => challenges.id, { onDelete: "cascade" }),
+    challengeDate: text("challenge_date").notNull(),
+    score: integer("score").notNull(),
+    completedAt: integer("completed_at", { mode: "timestamp" }).notNull(),
+  },
+  (t) => [
+    uniqueIndex("daily_challenge_user_date_uq").on(t.userId, t.challengeDate),
+  ],
+);
+export const auditLogs = sqliteTable(
+  "audit_logs",
+  {
+    id: id(),
+    actorId: text("actor_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    action: text("action").notNull(),
+    entityType: text("entity_type").notNull(),
+    entityId: text("entity_id").notNull(),
+    metadata: text("metadata").notNull().default("{}"),
+    createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  },
+  (t) => [index("audit_logs_actor_created_idx").on(t.actorId, t.createdAt)],
+);
 export const reports = sqliteTable(
   "reports",
   {

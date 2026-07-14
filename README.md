@@ -9,6 +9,11 @@ Pipeline Academy is an interactive CI/CD learning platform for new developers. I
 - Structured lesson with an ordering exercise, notes, bookmarks, and completion feedback
 - Five-question quiz with scoring, pass/fail results, retries, and explanations
 - Pipeline Lab with 14 stages, five failures, logs, hints, fixes, reruns, approval, deployment, and run history
+- Compact practice dashboard with a daily challenge, ratings, submissions, pipeline runs, topic mastery, and activity calendar
+- Searchable challenge library with status, difficulty, topic, acceptance, attempts, and score filters
+- Resizable-style three-panel challenge workspace with Monaco YAML editing, visible checks, hidden submission validation, scoring, drafts, and restorable submission history
+- Community discussions with voting, bookmarking, reporting, and a validated post composer
+- Professional challenge and Pipeline Lab leaderboards plus read/unread notifications
 - Searchable glossary and global search
 - Local demo sign-in for Student, Instructor, and Administrator roles
 - Instructor lesson editor and publishing flow
@@ -84,7 +89,7 @@ Tests verify the production metadata, core course/simulator content, and major s
 - `tests/` — rendered-route and content-contract tests
 - `worker/` — Cloudflare Worker entry point used by vinext
 
-The local experience is intentionally client-interactive while durable production entities are designed for D1/PostgreSQL. Server actions or API routes should be introduced with Zod validation and server-side ownership/role checks when the production identity provider is connected.
+The local experience is intentionally client-interactive while durable production entities are designed for D1/PostgreSQL. `lib/demo-providers.ts` defines the replaceable challenge-persistence contract and deterministic browser adapter. `.env.example` lists provider selectors for authentication, database, email, GitHub, pipeline execution, deployment, storage, payments, and analytics. Production adapters must keep the same interfaces and enforce Zod validation plus server-side ownership and role checks.
 
 ## Deployment
 
