@@ -52,23 +52,27 @@ test("core curriculum and simulation data are complete", async () => {
     assert.match(pipeline, new RegExp(scenario));
 });
 
-test("major routes render successfully", async () => {
+test("public routes render and student workspaces require authentication", async () => {
+  for (const path of ["/curriculum", "/challenges", "/lab", "/leaderboard"]) {
+    const response = await render(path);
+    assert.equal(response.status, 200, path);
+  }
   for (const path of [
-    "/curriculum",
     "/dashboard",
     "/learn/software-delivery",
     "/quiz/ci-basics",
-    "/challenges",
     "/challenge/fix-node-pipeline",
-    "/lab",
     "/discuss",
-    "/leaderboard",
+    "/account",
     "/instructor",
     "/admin",
   ]) {
     const response = await render(path);
-    assert.equal(response.status, 200, path);
+    assert.equal(response.status, 307, path);
+    assert.match(response.headers.get("location") || "", /signin-with-chatgpt/);
   }
+  const api = await render("/api/beta/state");
+  assert.equal(api.status, 401);
 });
 
 test("challenge vertical slice contains deterministic visible and hidden validation", async () => {

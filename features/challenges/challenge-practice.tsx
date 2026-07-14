@@ -228,11 +228,13 @@ export function ChallengeWorkspace({
     void Promise.all([
       challengePersistence.loadDraft("fix-node-pipeline"),
       challengePersistence.listSubmissions("fix-node-pipeline"),
-    ]).then(([draft, items]) => {
-      if (draft) setSource(draft);
-      setHistory(items);
-    });
-  }, []);
+    ])
+      .then(([draft, items]) => {
+        if (draft) setSource(draft);
+        setHistory(items);
+      })
+      .catch(() => notify("Progress sync is temporarily unavailable"));
+  }, [notify]);
   const run = () => {
     setRunning(true);
     setSubmitted(false);
@@ -266,13 +268,16 @@ export function ChallengeWorkspace({
       setRunning(false);
       void challengePersistence
         .saveSubmission("fix-node-pipeline", entry)
-        .then(setHistory);
+        .then(setHistory)
+        .catch(() => notify("Submission ran, but could not be synced"));
       notify(`${entry.status} · ${score}%`);
     }, 850);
   };
   const save = () => {
-    void challengePersistence.saveDraft("fix-node-pipeline", source);
-    notify("Draft saved on this device");
+    void challengePersistence
+      .saveDraft("fix-node-pipeline", source)
+      .then(() => notify("Draft synced across devices"))
+      .catch(() => notify("Draft could not be synced"));
   };
   const score = checks.length
     ? Math.round((checks.filter((c) => c.passed).length / checks.length) * 100)

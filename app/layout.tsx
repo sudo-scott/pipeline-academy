@@ -19,7 +19,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://pipeline-academy.openai.app"),
+  metadataBase: new URL("https://pipeline-academy.etozinplayz.chatgpt.site"),
   title: {
     default: "Pipeline Academy — Learn How Code Reaches Production",
     template: "%s · Pipeline Academy",

@@ -15,7 +15,7 @@ Pipeline Academy is an interactive CI/CD learning platform for new developers. I
 - Community discussions with voting, bookmarking, reporting, and a validated post composer
 - Professional challenge and Pipeline Lab leaderboards plus read/unread notifications
 - Searchable glossary and global search
-- Local demo sign-in for Student, Instructor, and Administrator roles
+- ChatGPT sign-in with server-created beta student accounts
 - Instructor lesson editor and publishing flow
 - Admin analytics, user management, and report-review surfaces
 - Dark/light themes, keyboard focus, reduced motion, loading-safe layout, and mobile navigation
@@ -30,7 +30,7 @@ npm install
 npm run dev
 ```
 
-Open `http://localhost:3000`. No credentials are required. The demo stores role, theme, and lightweight interaction state in the browser only.
+Open `http://localhost:3000`. The public catalog works anonymously. Hosted student workspaces use ChatGPT sign-in; only theme preference remains device-local.
 
 On Windows, if the environment-variable syntax in the package script is not supported by your shell, run:
 
@@ -39,9 +39,11 @@ $env:WRANGLER_LOG_PATH='.wrangler/wrangler.log'
 npx vinext dev
 ```
 
-## Demo workspaces
+## Beta workspaces
 
-Open `/signin`, choose Student, Instructor, or Administrator, then select **Enter demo workspace**. The displayed email and password are illustrative local values and are never sent anywhere. Do not ship demo passwords as production credentials.
+Open `/signin` and select **Sign in with ChatGPT**. New identities receive student access by default. Instructor and administrator routes are checked on the server against the role stored in D1.
+
+Lesson completion, notes, challenge drafts, and submission history are saved to D1 through authenticated endpoints and follow the student between devices.
 
 ## Database
 
@@ -57,11 +59,11 @@ The generated migration is committed under `drizzle/`. Seed examples are in `db/
 
 ## Supabase integration
 
-The current review build intentionally uses safe mock authentication because no Supabase project credentials were supplied. To connect Supabase:
+The beta uses dispatch-owned ChatGPT sign-in and does not require Supabase. If a future public identity system is needed:
 
 1. Copy `.env.example` to `.env.local`.
 2. Add the public project URL and anon key; keep the service-role key server-only.
-3. Replace the demo sign-in adapter with Supabase Auth server utilities.
+3. Replace the ChatGPT identity adapter with reviewed Supabase server utilities.
 4. Mirror the models in `db/schema.ts` in PostgreSQL.
 5. Add Row Level Security policies based on authenticated user ownership and server-verified roles.
 6. Configure email verification, password reset redirects, avatar storage limits, and provider callbacks.
@@ -77,7 +79,7 @@ npm test
 npx tsc --noEmit
 ```
 
-Tests verify the production metadata, core course/simulator content, and major server-rendered routes. The business logic is kept in `lib/` so it can be extended with Vitest unit suites and Playwright end-to-end coverage as the real auth adapter is connected.
+Tests verify production metadata, the course and simulator content, public routes, authentication redirects, API rejection for anonymous requests, and deterministic challenge validation.
 
 ## Architecture
 
@@ -89,7 +91,7 @@ Tests verify the production metadata, core course/simulator content, and major s
 - `tests/` — rendered-route and content-contract tests
 - `worker/` — Cloudflare Worker entry point used by vinext
 
-The local experience is intentionally client-interactive while durable production entities are designed for D1/PostgreSQL. `lib/demo-providers.ts` defines the replaceable challenge-persistence contract and deterministic browser adapter. `.env.example` lists provider selectors for authentication, database, email, GitHub, pipeline execution, deployment, storage, payments, and analytics. Production adapters must keep the same interfaces and enforce Zod validation plus server-side ownership and role checks.
+The authenticated beta persists its core student journey in D1. `lib/demo-providers.ts` keeps the replaceable challenge-persistence contract but now uses the authenticated beta API. `.env.example` lists provider selectors for authentication, database, email, GitHub, pipeline execution, deployment, storage, payments, and analytics. All state updates use Zod validation and server-derived ownership.
 
 ## Deployment
 
@@ -98,6 +100,6 @@ Run a clean build, package the generated `dist/` output with the Sites packaging
 ## Troubleshooting
 
 - Blank or stale preview: restart the dev server and reload `http://localhost:3000`.
-- D1 unavailable locally: keep using demo mode, or confirm the `DB` binding and local database path in `vite.config.ts`.
+- D1 unavailable locally: confirm the `DB` binding and local database path in `vite.config.ts`.
 - Migration changed: rerun `npm run db:generate` and inspect the SQL before deployment.
-- Production auth redirects fail: verify the deployed URL and Supabase callback allowlist.
+- Production auth redirects fail: verify the deployed URL and the dispatch-owned ChatGPT sign-in paths.

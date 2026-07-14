@@ -1,6 +1,7 @@
 import {
   index,
   integer,
+  primaryKey,
   sqliteTable,
   text,
   uniqueIndex,
@@ -546,4 +547,44 @@ export const userSettings = sqliteTable(
     ...timestamps,
   },
   (t) => [uniqueIndex("user_settings_user_uq").on(t.userId)],
+);
+
+export const betaMembers = sqliteTable("beta_members", {
+  email: text("email").primaryKey(),
+  displayName: text("display_name").notNull(),
+  role: text("role", { enum: ["student", "instructor", "admin"] })
+    .notNull()
+    .default("student"),
+  joinedAt: integer("joined_at", { mode: "timestamp" }).notNull(),
+  lastSeenAt: integer("last_seen_at", { mode: "timestamp" }).notNull(),
+});
+
+export const betaLessonState = sqliteTable(
+  "beta_lesson_state",
+  {
+    email: text("email")
+      .notNull()
+      .references(() => betaMembers.email, { onDelete: "cascade" }),
+    lessonId: text("lesson_id").notNull(),
+    completed: integer("completed", { mode: "boolean" })
+      .notNull()
+      .default(false),
+    note: text("note").notNull().default(""),
+    updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.email, t.lessonId] })],
+);
+
+export const betaChallengeState = sqliteTable(
+  "beta_challenge_state",
+  {
+    email: text("email")
+      .notNull()
+      .references(() => betaMembers.email, { onDelete: "cascade" }),
+    challengeId: text("challenge_id").notNull(),
+    draft: text("draft").notNull().default(""),
+    submissions: text("submissions").notNull().default("[]"),
+    updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.email, t.challengeId] })],
 );

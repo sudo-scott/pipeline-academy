@@ -63,6 +63,7 @@ import {
   quizQuestions,
 } from "../lib/course-data";
 import { freshStages, scenarios, type PipelineStage } from "../lib/pipeline";
+import type { BetaViewer } from "../lib/beta-server";
 import {
   ChallengeLibrary,
   ChallengeWorkspace,
@@ -190,23 +191,23 @@ function PageHead({
 
 export default function AcademyApp({
   initialView = "home",
+  viewer = null,
 }: {
   initialView?: View;
+  viewer?: BetaViewer | null;
 }) {
   const [view, setView] = useState<View>(initialView),
     [dark, setDark] = useState(true),
-    [role, setRole] = useState<Role>("student"),
-    [signed, setSigned] = useState(false),
     [search, setSearch] = useState(false),
     [notificationsOpen, setNotificationsOpen] = useState(false),
     [mobile, setMobile] = useState(false),
     [toast, setToast] = useState("");
+  const signed = Boolean(viewer);
+  const role: Role = viewer?.role ?? "student";
   useEffect(() => {
     try {
       const d = JSON.parse(localStorage.getItem("pa-demo") || "{}");
       queueMicrotask(() => {
-        setSigned(!!d.signed);
-        setRole(d.role || "student");
         setDark(d.dark !== false);
       });
     } catch {}
@@ -230,26 +231,50 @@ export default function AcademyApp({
   }, []);
   useEffect(() => {
     document.documentElement.dataset.theme = dark ? "dark" : "light";
-    localStorage.setItem("pa-demo", JSON.stringify({ signed, role, dark }));
-  }, [dark, role, signed]);
+    localStorage.setItem("pa-demo", JSON.stringify({ dark }));
+  }, [dark]);
   useEffect(() => {
     if (!toast) return;
     const t = setTimeout(() => setToast(""), 2500);
     return () => clearTimeout(t);
   }, [toast]);
   const nav = (v: View) => {
+    const protectedViews: View[] = [
+      "dashboard",
+      "lesson",
+      "quiz",
+      "challenge",
+      "community",
+      "account",
+      "instructor",
+      "admin",
+    ];
+    if (!signed && protectedViews.includes(v)) {
+      setView("signin");
+      history.pushState({}, "", paths.signin);
+      setToast("Sign in to continue");
+      return;
+    }
+    if (
+      (v === "instructor" && role === "student") ||
+      (v === "admin" && role !== "admin")
+    ) {
+      setToast("Your beta account does not have access to that workspace");
+      return;
+    }
     setView(v);
     setMobile(false);
     setNotificationsOpen(false);
     history.pushState({}, "", paths[v]);
     scrollTo({ top: 0, behavior: "smooth" });
   };
-  const login = (r: Role) => {
-    setRole(r);
-    setSigned(true);
-    setToast(`Demo ${r} workspace loaded`);
-    nav(r === "student" ? "dashboard" : r);
-  };
+  const initials =
+    viewer?.displayName
+      .split(/\s+/)
+      .map((part) => part[0])
+      .join("")
+      .slice(0, 2)
+      .toUpperCase() || "PA";
   return (
     <div className="app-shell">
       <a className="skip" href="#main">
@@ -308,9 +333,9 @@ export default function AcademyApp({
             <button
               className="avatar"
               onClick={() => nav(role === "student" ? "dashboard" : role)}
-              aria-label="Open demo workspace"
+              aria-label="Open your workspace"
             >
-              AM
+              {initials}
             </button>
           ) : (
             <>
@@ -369,7 +394,7 @@ export default function AcademyApp({
           >
             {view === "home" && <Landing nav={nav} />}{" "}
             {view === "curriculum" && <Curriculum nav={nav} />}{" "}
-            {view === "dashboard" && <Dashboard nav={nav} />}{" "}
+            {view === "dashboard" && <Dashboard nav={nav} viewer={viewer} />}{" "}
             {view === "lesson" && <Lesson nav={nav} toast={setToast} />}{" "}
             {view === "quiz" && <Quiz nav={nav} />}{" "}
             {view === "challenges" && (
@@ -385,10 +410,8 @@ export default function AcademyApp({
             {view === "leaderboard" && <Leaderboard />}{" "}
             {view === "lab" && <Lab toast={setToast} />}{" "}
             {view === "glossary" && <Glossary />}{" "}
-            {view === "signin" && <SignIn login={login} />}{" "}
-            {view === "account" && (
-              <Account role={role} setRole={setRole} toast={setToast} />
-            )}{" "}
+            {view === "signin" && <SignIn />}{" "}
+            {view === "account" && <Account viewer={viewer} toast={setToast} />}{" "}
             {view === "instructor" && <Instructor toast={setToast} />}{" "}
             {view === "admin" && <Admin toast={setToast} />}{" "}
             {view === "about" && <About />}{" "}
@@ -881,15 +904,23 @@ function Stat({
   );
 }
 
-function Dashboard({ nav }: { nav: (v: View) => void }) {
+function Dashboard({
+  nav,
+  viewer,
+}: {
+  nav: (v: View) => void;
+  viewer: BetaViewer | null;
+}) {
   const activity = Array.from({ length: 84 }, (_, i) => (i * 7 + (i % 5)) % 6);
   return (
     <div className="practice-dashboard">
       <header className="practice-dashboard-head">
         <div>
-          <small>GOOD AFTERNOON, ALEX</small>
+          <small>
+            SIGNED IN · {viewer?.displayName.toUpperCase() || "BETA STUDENT"}
+          </small>
           <h1>Ready for the next pipeline?</h1>
-          <p>Six-day streak · 420 XP until your next level</p>
+          <p>Your progress is synced securely across devices.</p>
         </div>
         <button className="daily-dashboard" onClick={() => nav("challenge")}>
           <Zap />
@@ -1279,7 +1310,49 @@ function Lesson({
   toast: (s: string) => void;
 }) {
   const [done, setDone] = useState(false),
-    [note, setNote] = useState("");
+    [note, setNote] = useState(""),
+    [syncReady, setSyncReady] = useState(false),
+    [syncing, setSyncing] = useState(false);
+  useEffect(() => {
+    void fetch("/api/beta/state")
+      .then((response) => {
+        if (!response.ok) throw new Error("Unable to load progress");
+        return response.json() as Promise<{
+          lesson: { completed: boolean; note: string };
+        }>;
+      })
+      .then((state) => {
+        setDone(state.lesson.completed);
+        setNote(state.lesson.note);
+        setSyncReady(true);
+      })
+      .catch(() => toast("Progress sync is temporarily unavailable"));
+  }, [toast]);
+  useEffect(() => {
+    if (!syncReady) return;
+    const timer = setTimeout(() => {
+      setSyncing(true);
+      void fetch("/api/beta/state", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          type: "lesson.save",
+          lessonId: "software-delivery",
+          completed: done,
+          note,
+        }),
+      })
+        .then((response) => {
+          if (!response.ok) throw new Error("Unable to sync progress");
+          setSyncing(false);
+        })
+        .catch(() => {
+          setSyncing(false);
+          toast("Your latest lesson change could not be synced");
+        });
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [done, note, syncReady, toast]);
   return (
     <div className="lesson-layout">
       <aside className="course-side">
@@ -1384,7 +1457,9 @@ function Lesson({
         <section className="notes">
           <div className="panel-title">
             <h3>Your notes</h3>
-            <span>{note ? "Saved" : "Saved locally in demo mode"}</span>
+            <span>
+              {syncing ? "Syncing…" : syncReady ? "Synced" : "Loading…"}
+            </span>
           </div>
           <textarea
             value={note}
@@ -1400,7 +1475,7 @@ function Lesson({
             className={done ? "success" : "primary"}
             onClick={() => {
               setDone(true);
-              toast("Lesson complete — +120 XP");
+              toast("Lesson complete — progress synced");
             }}
           >
             {done ? (
@@ -1980,18 +2055,17 @@ function Glossary() {
   );
 }
 
-function SignIn({ login }: { login: (r: Role) => void }) {
-  const [role, setRole] = useState<Role>("student");
+function SignIn() {
   return (
     <div className="auth">
       <section>
         <Logo />
         <div>
-          <Pill tone="cyan">DEMO MODE</Pill>
-          <h1>Practice software delivery without risking production.</h1>
+          <Pill tone="cyan">CLASSMATE BETA</Pill>
+          <h1>Your progress now follows you between devices.</h1>
           <p>
-            Choose a workspace to explore learner, teaching, and administration
-            workflows.
+            Sign in with ChatGPT to save lesson completion, personal notes,
+            challenge drafts, and submission history securely.
           </p>
           <div className="auth-icons">
             {[GitBranch, ShieldCheck, Box, Zap].map((I, i) => (
@@ -2001,57 +2075,30 @@ function SignIn({ login }: { login: (r: Role) => void }) {
             ))}
           </div>
         </div>
-        <small>Local demo data · No real credentials required</small>
+        <small>Private beta · Student access by default</small>
       </section>
       <form
         onSubmit={(e) => {
           e.preventDefault();
-          login(role);
+          location.href = "/signin-with-chatgpt?return_to=%2Fdashboard";
         }}
       >
-        <h2>Create your learning workspace</h2>
-        <p>Start the free CI/CD fundamentals path.</p>
+        <h2>Continue to your workspace</h2>
+        <p>Student access is enabled by default for beta testers.</p>
         <div className="role-picker">
-          {(["student", "instructor", "admin"] as Role[]).map((r) => (
-            <button
-              type="button"
-              className={role === r ? "active" : ""}
-              onClick={() => setRole(r)}
-              key={r}
-            >
-              {r === "student" ? (
-                <User />
-              ) : r === "instructor" ? (
-                <BookOpen />
-              ) : (
-                <ShieldCheck />
-              )}
-              <span>
-                <b>{r[0].toUpperCase() + r.slice(1)}</b>
-                <small>
-                  {r === "student"
-                    ? "Learn and practice"
-                    : r === "instructor"
-                      ? "Create content"
-                      : "Manage the platform"}
-                </small>
-              </span>
-            </button>
-          ))}
+          <div className="active">
+            <User />
+            <span>
+              <b>Student</b>
+              <small>Learn, practice, and keep progress</small>
+            </span>
+          </div>
         </div>
-        <label>
-          Email address
-          <input type="email" defaultValue={`${role}@pipeline.academy`} />
-        </label>
-        <label>
-          Password
-          <input type="password" defaultValue="demo-access" />
-        </label>
         <button className="primary full" type="submit">
-          Enter demo workspace <ArrowRight />
+          Sign in with ChatGPT <ArrowRight />
         </button>
         <div className="auth-note">
-          <LockKeyhole /> Credentials stay on this device.
+          <LockKeyhole /> Pipeline Academy never receives your password.
         </div>
       </form>
     </div>
@@ -2059,12 +2106,10 @@ function SignIn({ login }: { login: (r: Role) => void }) {
 }
 
 function Account({
-  role,
-  setRole,
+  viewer,
   toast,
 }: {
-  role: Role;
-  setRole: (r: Role) => void;
+  viewer: BetaViewer | null;
   toast: (s: string) => void;
 }) {
   return (
@@ -2094,13 +2139,15 @@ function Account({
         </aside>
         <section className="panel">
           <div className="profile">
-            <span className="avatar large">AM</span>
+            <span className="avatar large">
+              {viewer?.displayName.slice(0, 2).toUpperCase() || "PA"}
+            </span>
             <span>
               <h3>Profile photo</h3>
               <p>PNG or JPG, up to 2 MB.</p>
               <button
                 className="secondary"
-                onClick={() => toast("Demo avatar updated")}
+                onClick={() => toast("Profile photos are coming after beta")}
               >
                 Upload new photo
               </button>
@@ -2109,11 +2156,11 @@ function Account({
           <div className="form-grid">
             <label>
               Display name
-              <input defaultValue="Alex Morgan" />
+              <input defaultValue={viewer?.displayName || "Beta student"} />
             </label>
             <label>
-              Username
-              <input defaultValue="alexmorgan" />
+              Account email
+              <input defaultValue={viewer?.email || ""} readOnly />
             </label>
             <label>
               Experience
@@ -2131,15 +2178,8 @@ function Account({
               </select>
             </label>
             <label>
-              Demo role
-              <select
-                value={role}
-                onChange={(e) => setRole(e.target.value as Role)}
-              >
-                <option value="student">Student</option>
-                <option value="instructor">Instructor</option>
-                <option value="admin">Administrator</option>
-              </select>
+              Beta access
+              <input value={viewer?.role || "student"} readOnly />
             </label>
           </div>
           <label>
@@ -2147,6 +2187,14 @@ function Account({
             <textarea defaultValue="Understand GitHub Actions and diagnose pipeline failures." />
           </label>
           <div className="button-row end">
+            <button
+              className="secondary"
+              onClick={() => {
+                location.href = "/signout-with-chatgpt?return_to=%2F";
+              }}
+            >
+              Sign out
+            </button>
             <button
               className="secondary"
               onClick={() => toast("Progress export prepared")}

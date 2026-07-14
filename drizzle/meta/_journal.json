@@ -15,6 +15,13 @@
       "when": 1784065108242,
       "tag": "0001_yellow_kulan_gath",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1784067603919,
+      "tag": "0002_funny_madame_hydra",
+      "breakpoints": true
     }
   ]
 }

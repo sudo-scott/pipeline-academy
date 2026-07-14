@@ -101,6 +101,39 @@ body,
   display: none !important;
 }
 
+.auth form > label {
+  display: none;
+}
+
+.auth .role-picker {
+  margin-bottom: 28px;
+}
+
+.auth .role-picker > div {
+  display: flex;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--panel-elevated);
+}
+
+.auth .role-picker > div > span {
+  display: grid;
+}
+
+.auth .role-picker small {
+  color: var(--text-secondary);
+}
+
+.auth-note {
+  justify-content: center;
+}
+
+.settings a.secondary {
+  text-decoration: none;
+}
+
 button,
 article,
 .panel,

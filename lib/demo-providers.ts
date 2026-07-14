@@ -15,45 +15,73 @@ export interface ChallengePersistenceProvider {
   ): Promise<DemoSubmission[]>;
 }
 
-class BrowserDemoChallengeProvider implements ChallengePersistenceProvider {
+type BetaStateResponse = {
+  challenge: {
+    draft: string;
+    submissions: DemoSubmission[];
+  };
+};
+
+async function betaRequest(
+  challengeId: string,
+  body?: Record<string, unknown>,
+): Promise<BetaStateResponse> {
+  const response = await fetch(
+    `/api/beta/state?challengeId=${encodeURIComponent(challengeId)}`,
+    body
+      ? {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(body),
+        }
+      : undefined,
+  );
+  if (!response.ok)
+    throw new Error(
+      response.status === 401
+        ? "Sign in to save progress"
+        : "Progress sync is temporarily unavailable",
+    );
+  return response.json() as Promise<BetaStateResponse>;
+}
+
+class BetaChallengeProvider implements ChallengePersistenceProvider {
   async loadDraft(challengeId: string) {
-    if (typeof window === "undefined") return null;
-    const raw = localStorage.getItem(`pa:draft:${challengeId}`);
-    return raw ? (JSON.parse(raw).source as string) : null;
+    const state = await betaRequest(challengeId);
+    return state.challenge.draft || null;
   }
   async saveDraft(challengeId: string, source: string) {
-    localStorage.setItem(
-      `pa:draft:${challengeId}`,
-      JSON.stringify({ source, updatedAt: new Date().toISOString() }),
-    );
+    await betaRequest(challengeId, {
+      type: "challenge.saveDraft",
+      challengeId,
+      source,
+    });
   }
   async listSubmissions(challengeId: string) {
-    if (typeof window === "undefined") return [];
-    return JSON.parse(
-      localStorage.getItem(`pa:submissions:${challengeId}`) || "[]",
-    ) as DemoSubmission[];
+    const state = await betaRequest(challengeId);
+    return state.challenge.submissions;
   }
   async saveSubmission(challengeId: string, submission: DemoSubmission) {
-    const next = [
+    const state = await betaRequest(challengeId, {
+      type: "challenge.submit",
+      challengeId,
       submission,
-      ...(await this.listSubmissions(challengeId)),
-    ].slice(0, 5);
-    localStorage.setItem(`pa:submissions:${challengeId}`, JSON.stringify(next));
-    return next;
+    });
+    return state.challenge.submissions;
   }
 }
 
 export const challengePersistence: ChallengePersistenceProvider =
-  new BrowserDemoChallengeProvider();
+  new BetaChallengeProvider();
 
 export const providerStatus = {
-  authentication: "deterministic-demo",
-  database: "d1-schema-with-browser-demo-adapter",
+  authentication: "chatgpt-sign-in",
+  database: "cloudflare-d1",
   email: "captured-locally",
   github: "simulated-webhook-events",
   pipeline: "deterministic-stage-engine",
   deployment: "simulated-environments",
   storage: "metadata-only-demo",
   payments: "disabled-demo",
-  analytics: "deterministic-seed-data",
+  analytics: "beta-events-pending",
 } as const;
