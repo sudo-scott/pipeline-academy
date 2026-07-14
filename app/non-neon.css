@@ -96,6 +96,11 @@ body,
   background: var(--background);
 }
 
+/* Prevent browser-injected collaboration cursors from floating over the app. */
+#codex-browser-sidebar-comments-root {
+  display: none !important;
+}
+
 button,
 article,
 .panel,
