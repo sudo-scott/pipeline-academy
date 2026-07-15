@@ -65,3 +65,127 @@ test("challenge vertical slice contains visible and hidden validation", async ()
   assert.equal(passing.every((check) => check.passed), true);
   assert.equal(passing.length, 7);
 });
+
+test("tester access is gated, constant-time, and production-disabled", async () => {
+  const {
+    evaluateTesterAttempt,
+    isTesterAccessEnabled,
+    testerAccountEmail,
+    testerCodeMatches,
+  } = await import("../lib/tester-access.ts");
+
+  assert.equal(
+    isTesterAccessEnabled({
+      ENABLE_TESTER_ACCESS: "true",
+      VERCEL_ENV: "preview",
+      NODE_ENV: "production",
+    }),
+    true,
+  );
+  assert.equal(
+    isTesterAccessEnabled({
+      ENABLE_TESTER_ACCESS: "true",
+      VERCEL_ENV: "production",
+      NODE_ENV: "production",
+    }),
+    false,
+  );
+  assert.equal(
+    isTesterAccessEnabled({
+      ENABLE_TESTER_ACCESS: "true",
+      NODE_ENV: "production",
+    }),
+    false,
+  );
+  assert.equal(testerCodeMatches("correct-code", "correct-code"), true);
+  assert.equal(testerCodeMatches("wrong-code", "correct-code"), false);
+  assert.equal(
+    testerAccountEmail(
+      "66A673C0-6A7B-4B56-889B-80A43A879E3D",
+      "Preview.Example.com",
+    ),
+    "tester-66a673c06a7b4b56889b80a43a879e3d@preview.example.com",
+  );
+
+  let sessionCreated = false;
+  const success = await evaluateTesterAttempt(
+    {
+      submittedCode: "correct-code",
+      configuredCode: "correct-code",
+      fingerprint: "fingerprint",
+    },
+    {
+      consumeAttempt: async () => true,
+      establishSession: async () => {
+        sessionCreated = true;
+      },
+    },
+  );
+  assert.equal(success, "success");
+  assert.equal(sessionCreated, true);
+
+  sessionCreated = false;
+  const incorrect = await evaluateTesterAttempt(
+    {
+      submittedCode: "wrong-code",
+      configuredCode: "correct-code",
+      fingerprint: "fingerprint",
+    },
+    {
+      consumeAttempt: async () => true,
+      establishSession: async () => {
+        sessionCreated = true;
+      },
+    },
+  );
+  assert.equal(incorrect, "invalid");
+  assert.equal(sessionCreated, false);
+
+  const missingConfiguration = await evaluateTesterAttempt(
+    {
+      submittedCode: "anything",
+      configuredCode: undefined,
+      fingerprint: "fingerprint",
+    },
+    {
+      consumeAttempt: async () => {
+        throw new Error("Rate limiter should not be called");
+      },
+      establishSession: async () => {
+        throw new Error("Session should not be created");
+      },
+    },
+  );
+  assert.equal(missingConfiguration, "unavailable");
+
+  const rateLimited = await evaluateTesterAttempt(
+    {
+      submittedCode: "correct-code",
+      configuredCode: "correct-code",
+      fingerprint: "fingerprint",
+    },
+    {
+      consumeAttempt: async () => false,
+      establishSession: async () => {
+        throw new Error("Session should not be created");
+      },
+    },
+  );
+  assert.equal(rateLimited, "rate_limited");
+});
+
+test("tester access secrets remain server-only and rate limiting is service-role-only", async () => {
+  const [route, app, exampleEnv, migration] = await Promise.all([
+    read("../app/api/auth/tester-access/route.ts"),
+    read("../app/academy-app.tsx"),
+    read("../.env.example"),
+    read("../supabase/migrations/20260715000000_tester_access.sql"),
+  ]);
+  assert.match(route, /process\.env\.TESTER_ACCESS_CODE/);
+  assert.doesNotMatch(app, /process\.env\.TESTER_ACCESS_CODE/);
+  assert.match(app, /TESTER ACCESS/);
+  assert.match(exampleEnv, /ENABLE_TESTER_ACCESS=false/);
+  assert.match(migration, /security definer/);
+  assert.match(migration, /revoke all.*authenticated/s);
+  assert.match(migration, /grant execute.*service_role/s);
+});

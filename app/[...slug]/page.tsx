@@ -4,6 +4,7 @@ import {
   requireBetaViewer,
   type BetaRole,
 } from "../../lib/beta-server";
+import { isTesterAccessEnabled } from "../../lib/tester-access";
 
 export const dynamic = "force-dynamic";
 
@@ -62,7 +63,13 @@ export default async function CatchAll({
   if (protectedViews.has(view))
     return <ProtectedApp initialView={view} returnTo={path} />;
   const viewer = await getOptionalBetaViewer();
-  return <AcademyApp initialView={view} viewer={viewer} />;
+  return (
+    <AcademyApp
+      initialView={view}
+      testerAccessEnabled={isTesterAccessEnabled()}
+      viewer={viewer}
+    />
+  );
 }
 
 async function ProtectedApp({
@@ -80,5 +87,11 @@ async function ProtectedApp({
     returnTo,
     roleRules[initialView] ?? ["student", "instructor", "admin"],
   );
-  return <AcademyApp initialView={initialView} viewer={viewer} />;
+  return (
+    <AcademyApp
+      initialView={initialView}
+      testerAccessEnabled={isTesterAccessEnabled()}
+      viewer={viewer}
+    />
+  );
 }

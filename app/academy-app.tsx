@@ -191,9 +191,11 @@ function PageHead({
 
 export default function AcademyApp({
   initialView = "home",
+  testerAccessEnabled = false,
   viewer = null,
 }: {
   initialView?: View;
+  testerAccessEnabled?: boolean;
   viewer?: BetaViewer | null;
 }) {
   const [view, setView] = useState<View>(initialView),
@@ -410,7 +412,9 @@ export default function AcademyApp({
             {view === "leaderboard" && <Leaderboard />}{" "}
             {view === "lab" && <Lab toast={setToast} />}{" "}
             {view === "glossary" && <Glossary />}{" "}
-            {view === "signin" && <SignIn />}{" "}
+            {view === "signin" && (
+              <SignIn testerAccessEnabled={testerAccessEnabled} />
+            )}{" "}
             {view === "account" && <Account viewer={viewer} toast={setToast} />}{" "}
             {view === "instructor" && <Instructor toast={setToast} />}{" "}
             {view === "admin" && <Admin toast={setToast} />}{" "}
@@ -2055,10 +2059,13 @@ function Glossary() {
   );
 }
 
-function SignIn() {
+function SignIn({ testerAccessEnabled }: { testerAccessEnabled: boolean }) {
   const [email, setEmail] = useState("");
   const [sending, setSending] = useState(false);
   const [message, setMessage] = useState("");
+  const [testerCode, setTesterCode] = useState("");
+  const [testerSending, setTesterSending] = useState(false);
+  const [testerMessage, setTesterMessage] = useState("");
   return (
     <div className="auth">
       <section>
@@ -2135,6 +2142,61 @@ function SignIn() {
         <div className="auth-note">
           <LockKeyhole /> Passwordless sign-in. Your progress stays private.
         </div>
+        {testerAccessEnabled && (
+          <section className="tester-access" aria-labelledby="tester-access-title">
+            <div className="tester-divider">
+              <span>OR</span>
+            </div>
+            <Pill tone="amber">TESTER ACCESS</Pill>
+            <h3 id="tester-access-title">Use a temporary test account</h3>
+            <p>
+              Enter the shared testing code. Email verification remains available
+              above.
+            </p>
+            <label>
+              Tester access code
+              <input
+                autoComplete="off"
+                name="tester-code"
+                onChange={(event) => setTesterCode(event.target.value)}
+                placeholder="Enter shared code"
+                type="password"
+                value={testerCode}
+              />
+            </label>
+            <button
+              className="secondary full"
+              disabled={testerSending || !testerCode}
+              onClick={async () => {
+                setTesterSending(true);
+                setTesterMessage("");
+                try {
+                  const response = await fetch("/api/auth/tester-access", {
+                    method: "POST",
+                    headers: { "content-type": "application/json" },
+                    body: JSON.stringify({ code: testerCode }),
+                  });
+                  const result = (await response.json()) as { error?: string };
+                  if (response.ok) {
+                    location.href = "/dashboard";
+                    return;
+                  }
+                  setTesterMessage(
+                    result.error ?? "Tester access could not be verified.",
+                  );
+                } catch {
+                  setTesterMessage("Tester access is temporarily unavailable.");
+                } finally {
+                  setTesterSending(false);
+                }
+              }}
+              type="button"
+            >
+              {testerSending ? "Checking code..." : "Enter tester workspace"}
+            </button>
+            {testerMessage && <p role="status">{testerMessage}</p>}
+          </section>
+        )}
       </form>
     </div>
   );
