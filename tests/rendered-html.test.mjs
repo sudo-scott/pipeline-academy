@@ -16,11 +16,16 @@ test("production metadata and product copy are present", async () => {
 });
 
 test("core curriculum and simulation data are complete", async () => {
-  const [course, pipeline] = await Promise.all([
+  const [course, lessons, pipeline] = await Promise.all([
     read("../lib/course-data.ts"),
+    read("../lib/lesson-content.ts"),
     read("../lib/pipeline.ts"),
   ]);
-  for (let i = 1; i <= 14; i++) assert.match(course, new RegExp(`id: ${i},`));
+  for (let i = 1; i <= 14; i++) assert.match(lessons, new RegExp(`id: ${i},`));
+  assert.match(course, /courseModules\.map/);
+  assert.equal((lessons.match(/lesson\(\{/g) ?? []).length, 28);
+  assert.equal((lessons.match(/objectives: \[/g) ?? []).length, 28);
+  assert.equal((lessons.match(/practice: \{ prompt:/g) ?? []).length - 1, 28);
   for (const stage of [
     "Code pushed",
     "Unit tests",

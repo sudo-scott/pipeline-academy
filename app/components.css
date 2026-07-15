@@ -408,6 +408,126 @@
 .definition p {
   margin: 4px 0;
 }
+.term-list {
+  display: grid;
+  gap: 10px;
+}
+.term-list .definition {
+  margin-top: 0;
+}
+.lesson-prerequisites ul,
+.worked-example ol {
+  line-height: 1.75;
+}
+.lesson-steps {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+.lesson-steps li {
+  display: grid;
+  grid-template-columns: 32px 1fr;
+  align-items: start;
+  gap: 12px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  border-radius: 8px;
+  padding: 12px;
+}
+.lesson-steps li > span {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--surface2);
+  color: var(--cyan);
+  font: 12px var(--font-geist-mono);
+}
+.lesson-steps p {
+  margin: 3px 0;
+}
+.mistakes ul,
+.lesson-summary ul {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+.mistakes li,
+.lesson-summary li {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+}
+.mistakes svg {
+  color: var(--yellow);
+}
+.lesson-summary svg {
+  color: var(--green);
+}
+.mistakes svg,
+.lesson-summary svg,
+.practice-controls svg {
+  width: 17px;
+  flex: none;
+}
+.lesson-check,
+.practice-exercise,
+.worked-example {
+  border: 1px solid var(--line);
+  background: var(--surface);
+  border-radius: 11px;
+  padding: 22px;
+}
+.check-options {
+  display: grid;
+  gap: 8px;
+  margin: 18px 0;
+}
+.check-options button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--surface2);
+  color: var(--text);
+  text-align: left;
+}
+.check-options button > span {
+  font: 11px var(--font-geist-mono);
+  color: var(--muted);
+}
+.check-options button.selected {
+  border-color: var(--cyan);
+}
+.check-options button.correct,
+.check-feedback.correct {
+  border-color: var(--green);
+}
+.check-options button.wrong,
+.check-feedback.wrong {
+  border-color: var(--red);
+}
+.check-feedback {
+  border-left: 3px solid;
+  margin-top: 16px;
+  padding: 12px 16px;
+  background: var(--surface2);
+}
+.check-feedback p {
+  margin: 5px 0 0;
+}
+.practice-controls {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 18px 0;
+}
 .env-flow {
   display: grid;
   grid-template-columns: repeat(3, 1fr);

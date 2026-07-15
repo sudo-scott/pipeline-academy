@@ -29,7 +29,6 @@ import {
   Clock3,
   Code2,
   Command,
-  Container,
   Database,
   Gauge,
   GitBranch,
@@ -62,17 +61,20 @@ import {
   modules,
   quizQuestions,
 } from "../lib/course-data";
+import {
+  allLessons,
+  courseModules,
+  findLesson,
+} from "../lib/lesson-content";
 import { freshStages, scenarios, type PipelineStage } from "../lib/pipeline";
 import type { BetaViewer } from "../lib/beta-server";
 import {
   ChallengeLibrary,
   ChallengeWorkspace,
 } from "../features/challenges/challenge-practice";
+import { LessonView } from "../features/lessons/lesson-view";
 
 type Role = "student" | "instructor" | "admin";
-function Github() {
-  return <Code2 />;
-}
 type View =
   | "home"
   | "curriculum"
@@ -99,7 +101,7 @@ const paths: Record<View, string> = {
   home: "/",
   curriculum: "/curriculum",
   dashboard: "/dashboard",
-  lesson: "/learn/software-delivery",
+  lesson: "/learn/release-problem",
   quiz: "/quiz/ci-basics",
   challenges: "/challenges",
   challenge: "/challenge/fix-node-pipeline",
@@ -191,10 +193,12 @@ function PageHead({
 
 export default function AcademyApp({
   initialView = "home",
+  initialLessonId = allLessons[0].id,
   testerAccessEnabled = false,
   viewer = null,
 }: {
   initialView?: View;
+  initialLessonId?: string;
   testerAccessEnabled?: boolean;
   viewer?: BetaViewer | null;
 }) {
@@ -203,7 +207,12 @@ export default function AcademyApp({
     [search, setSearch] = useState(false),
     [notificationsOpen, setNotificationsOpen] = useState(false),
     [mobile, setMobile] = useState(false),
-    [toast, setToast] = useState("");
+    [toast, setToast] = useState(""),
+    [activeLessonId, setActiveLessonId] = useState(
+      allLessons.some((item) => item.id === initialLessonId)
+        ? initialLessonId
+        : allLessons[0].id,
+    );
   const signed = Boolean(viewer);
   const role: Role = viewer?.role ?? "student";
   useEffect(() => {
@@ -227,6 +236,8 @@ export default function AcademyApp({
               ? "quiz"
               : "home"),
       );
+      if (location.pathname.startsWith("/learn"))
+        setActiveLessonId(findLesson(location.pathname).id);
     };
     addEventListener("popstate", onPopState);
     return () => removeEventListener("popstate", onPopState);
@@ -240,7 +251,7 @@ export default function AcademyApp({
     const t = setTimeout(() => setToast(""), 2500);
     return () => clearTimeout(t);
   }, [toast]);
-  const nav = (v: View) => {
+  const nav = (v: View, href = paths[v]) => {
     const protectedViews: View[] = [
       "dashboard",
       "lesson",
@@ -267,8 +278,14 @@ export default function AcademyApp({
     setView(v);
     setMobile(false);
     setNotificationsOpen(false);
-    history.pushState({}, "", paths[v]);
+    history.pushState({}, "", href);
     scrollTo({ top: 0, behavior: "smooth" });
+  };
+  const openLesson = (moduleId: number, lessonIndex: number) => {
+    const item = courseModules[moduleId - 1]?.lessons[lessonIndex];
+    if (!item) return;
+    setActiveLessonId(item.id);
+    nav("lesson", `/learn/${item.id}`);
   };
   const initials =
     viewer?.displayName
@@ -395,9 +412,18 @@ export default function AcademyApp({
             exit={{ opacity: 0 }}
           >
             {view === "home" && <Landing nav={nav} />}{" "}
-            {view === "curriculum" && <Curriculum nav={nav} />}{" "}
+            {view === "curriculum" && (
+              <Curriculum openLesson={openLesson} />
+            )}{" "}
             {view === "dashboard" && <Dashboard nav={nav} viewer={viewer} />}{" "}
-            {view === "lesson" && <Lesson nav={nav} toast={setToast} />}{" "}
+            {view === "lesson" && (
+              <Lesson
+                nav={nav}
+                toast={setToast}
+                lessonId={activeLessonId}
+                openLesson={openLesson}
+              />
+            )}{" "}
             {view === "quiz" && <Quiz nav={nav} />}{" "}
             {view === "challenges" && (
               <ChallengeLibrary openChallenge={() => nav("challenge")} />
@@ -459,8 +485,8 @@ function Landing({ nav }: { nav: (v: View) => void }) {
             <span>reaches production.</span>
           </h1>
           <p>
-            Understand builds, tests, deployments, GitHub Actions, Docker,
-            staging, and everything that happens after you push your code.
+            Understand feedback, builds, tests, deployment pipelines,
+            environments, releases, and everything that turns a change into value.
           </p>
           <div className="button-row">
             <button className="primary" onClick={() => nav("signin")}>
@@ -529,18 +555,18 @@ function Landing({ nav }: { nav: (v: View) => void }) {
         </div>
       </section>
       <section className="trust">
-        <span>LEARN THE TOOLS TEAMS USE</span>
+        <span>LEARN THE PRACTICES TEAMS USE</span>
         <b>
-          <Github /> GitHub Actions
+          <GitBranch /> Version Control
         </b>
         <b>
-          <Container /> Docker
+          <ShieldCheck /> Automated Testing
         </b>
         <b>
-          <Zap /> Vercel
+          <Zap /> Deployment Pipelines
         </b>
         <b>
-          <Database /> Supabase
+          <Database /> Managed Environments
         </b>
       </section>
       <section className="section">
@@ -586,7 +612,7 @@ function Landing({ nav }: { nav: (v: View) => void }) {
       </section>
       <section className="section course-preview">
         <PageHead
-          eyebrow="14 MODULES · 12 HOURS"
+          eyebrow="14 MODULES · 28 LESSONS"
           title="A practical path to production."
           desc="Start with the basics, build real workflows, then prove your skills in a complete release simulation."
         />
@@ -727,7 +753,7 @@ function Landing({ nav }: { nav: (v: View) => void }) {
         {[
           [
             "Do I need DevOps experience?",
-            "No. Git, YAML, Docker, tests, and deployment concepts start from first principles.",
+            "No. Version control, testing, configuration, and deployment concepts start from first principles.",
           ],
           [
             "Is Pipeline Lab connected to real clouds?",
@@ -766,7 +792,11 @@ function Landing({ nav }: { nav: (v: View) => void }) {
   );
 }
 
-function Curriculum({ nav }: { nav: (v: View) => void }) {
+function Curriculum({
+  openLesson,
+}: {
+  openLesson: (moduleId: number, lessonIndex: number) => void;
+}) {
   const [filter, setFilter] = useState("All");
   return (
     <Page>
@@ -822,7 +852,7 @@ function Curriculum({ nav }: { nav: (v: View) => void }) {
                   <Clock3 /> {m.minutes} min
                 </span>
                 <span>
-                  <HelpCircle /> 5 questions
+                  <HelpCircle /> 2 knowledge checks
                 </span>
               </div>
               {i === 0 && filter === "All" ? (
@@ -830,7 +860,7 @@ function Curriculum({ nav }: { nav: (v: View) => void }) {
                   <Progress value={50} label="1 of 2 lessons complete" />
                   <button
                     className="primary full"
-                    onClick={() => nav("lesson")}
+                    onClick={() => openLesson(m.id, 0)}
                   >
                     Continue module <ArrowRight />
                   </button>
@@ -838,7 +868,7 @@ function Curriculum({ nav }: { nav: (v: View) => void }) {
               ) : (
                 <button
                   className="secondary full"
-                  onClick={() => nav("lesson")}
+                  onClick={() => openLesson(m.id, 0)}
                 >
                   View module <ArrowRight />
                 </button>
@@ -987,14 +1017,14 @@ function Dashboard({
             <header>
               <span>
                 <small>CONTINUE LEARNING</small>
-                <b>Module 1 · Software Delivery Basics</b>
+                <b>Module 1 · Reliable Release Foundations</b>
               </span>
               <span>18 min</span>
             </header>
-            <h2>From idea to production</h2>
+            <h2>Why software releases become painful</h2>
             <p>
-              Follow one change through review, automated checks, staging, and
-              production.
+              Learn how cycle time, delayed feedback, and manual work turn small
+              changes into risky releases.
             </p>
             <Progress value={35} label="Lesson progress" />
             <button className="primary" onClick={() => nav("lesson")}>
@@ -1036,7 +1066,7 @@ function Dashboard({
                 "18m",
               ],
               ["Remove an Exposed Secret", "Accepted", "100%", "Yesterday"],
-              ["CI/CD Foundations Quiz", "Passed", "88%", "2d"],
+              ["Release Foundations Quiz", "Passed", "88%", "2d"],
             ].map((r) => (
               <div key={r[0]}>
                 <span>
@@ -1125,7 +1155,7 @@ function Dashboard({
               ["CI fundamentals", 82],
               ["Testing", 68],
               ["Builds", 54],
-              ["YAML", 42],
+              ["Configuration", 42],
             ].map((t) => (
               <div key={String(t[0])}>
                 <span>{t[0]}</span>
@@ -1225,8 +1255,8 @@ export function DashboardLegacy({ nav }: { nav: (v: View) => void }) {
                 <GitBranch />
               </span>
               <span>
-                <small>SOFTWARE DELIVERY BASICS</small>
-                <b>Branches, reviews, and environments</b>
+                <small>RELIABLE RELEASE FOUNDATIONS</small>
+                <b>Feedback, release candidates, and delivery principles</b>
                 <Progress value={35} />
               </span>
               <button onClick={() => nav("lesson")}>
@@ -1307,6 +1337,30 @@ export function DashboardLegacy({ nav }: { nav: (v: View) => void }) {
 }
 
 function Lesson({
+  nav,
+  toast,
+  lessonId,
+  openLesson,
+}: {
+  nav: (v: View) => void;
+  toast: (s: string) => void;
+  lessonId: string;
+  openLesson: (moduleId: number, lessonIndex: number) => void;
+}) {
+  const item = allLessons.find((lessonItem) => lessonItem.id === lessonId) ?? allLessons[0];
+  return (
+    <LessonView
+      key={item.id}
+      item={item}
+      openLesson={openLesson}
+      onCurriculum={() => nav("curriculum")}
+      onQuiz={() => nav("quiz")}
+      toast={toast}
+    />
+  );
+}
+
+export function LegacyLesson({
   nav,
   toast,
 }: {
@@ -1664,7 +1718,7 @@ function Quiz({ nav }: { nav: (v: View) => void }) {
         <button onClick={() => nav("lesson")}>
           <X /> Exit quiz
         </button>
-        <span>CI/CD Foundations</span>
+        <span>Reliable Release Foundations</span>
         <span>Question {q + 1} of 5</span>
       </div>
       <Progress value={(q + 1) * 20} />
@@ -2052,7 +2106,7 @@ function Glossary() {
         <div className="empty">
           <Search />
           <h3>No terms found</h3>
-          <p>Try CI, artifact, deployment, or YAML.</p>
+          <p>Try CI, artifact, deployment, or cycle time.</p>
         </div>
       )}
     </Page>
@@ -3114,7 +3168,7 @@ function SearchDialog({
           ) : (
             <>
               <small>TRY SEARCHING FOR</small>
-              {["Continuous Integration", "YAML", "Rollback", "Docker"].map(
+              {["Continuous Integration", "Cycle time", "Rollback", "Artifact"].map(
                 (x) => (
                   <button key={x} onClick={() => setQ(x)}>
                     <Search />

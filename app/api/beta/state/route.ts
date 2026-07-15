@@ -40,14 +40,18 @@ async function authenticated() {
   return user ? ensureBetaViewer(user) : null;
 }
 
-async function readState(userId: string, challengeId = "fix-node-pipeline") {
+async function readState(
+  userId: string,
+  challengeId = "fix-node-pipeline",
+  lessonId = "release-problem",
+) {
   const supabase = await createSupabaseServerClient();
   const [lessonResult, challengeResult] = await Promise.all([
     supabase
       .from("beta_lesson_state")
       .select("completed,note,updated_at")
       .eq("user_id", userId)
-      .eq("lesson_id", "software-delivery")
+      .eq("lesson_id", lessonId)
       .maybeSingle(),
     supabase
       .from("beta_challenge_state")
@@ -82,7 +86,12 @@ export async function GET(request: Request) {
     return Response.json({ error: "Authentication required" }, { status: 401 });
   const challengeId =
     new URL(request.url).searchParams.get("challengeId") ?? "fix-node-pipeline";
-  return Response.json({ viewer, ...(await readState(viewer.userId, challengeId)) });
+  const lessonId =
+    new URL(request.url).searchParams.get("lessonId") ?? "release-problem";
+  return Response.json({
+    viewer,
+    ...(await readState(viewer.userId, challengeId, lessonId)),
+  });
 }
 
 export async function POST(request: Request) {
@@ -100,9 +109,11 @@ export async function POST(request: Request) {
   const now = new Date().toISOString();
   const value = parsed.data;
   let challengeId = "fix-node-pipeline";
+  let lessonId = "release-problem";
   let error: { message: string } | null = null;
 
   if (value.type === "lesson.save") {
+    lessonId = value.lessonId;
     ({ error } = await supabase.from("beta_lesson_state").upsert(
       {
         user_id: viewer.userId,
@@ -150,6 +161,6 @@ export async function POST(request: Request) {
   if (error) throw new Error(error.message);
   return Response.json({
     viewer,
-    ...(await readState(viewer.userId, challengeId)),
+    ...(await readState(viewer.userId, challengeId, lessonId)),
   });
 }

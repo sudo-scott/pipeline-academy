@@ -90,6 +90,7 @@ async function ProtectedApp({
   return (
     <AcademyApp
       initialView={initialView}
+      initialLessonId={returnTo.split("/").at(-1)}
       testerAccessEnabled={isTesterAccessEnabled()}
       viewer={viewer}
     />
