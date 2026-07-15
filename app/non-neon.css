@@ -101,10 +101,6 @@ body,
   display: none !important;
 }
 
-.auth form > label {
-  display: none;
-}
-
 .auth .role-picker {
   margin-bottom: 28px;
 }

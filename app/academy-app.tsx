@@ -2128,7 +2128,7 @@ function SignIn() {
             value={email}
           />
         </label>
-        <button className="primary full" type="submit">
+        <button className="primary full" disabled={sending} type="submit">
           {sending ? "Sending link..." : "Email me a sign-in link"} <ArrowRight />
         </button>
         {message && <p role="status">{message}</p>}
